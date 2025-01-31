@@ -87,7 +87,7 @@ for panel, diffs, cutoffs, xlabel in zip([internal_to_internal_panel, internal_t
   panel.set_yticklabels([f'{i}' for i in range(-ylim_kb, ylim_kb + 1)])
   panel.set_yticks([1000 * i for i in np.arange(-ylim_kb, ylim_kb, 0.5)], minor=True)
   panel.set_ylabel('Alignment difference (kbp)')
-  panel.set_xlabel(f'{xlabel} ({len(diffs)} pairs)')
+  panel.set_xlabel(f'{xlabel} ({len(diffs)} pairs)', fontsize=6)
 
   panel.grid(True, which='both')
   panel.grid(which='minor', alpha=0.2, linestyle='--')
@@ -99,6 +99,8 @@ for panel, diffs, cutoffs, xlabel in zip([internal_to_internal_panel, internal_t
 
 internal_to_internal_colors = ['skyblue' if diff == 0 else 'yellowgreen' if diff < 0 else 'salmon' for diff in internal_to_internal_diffs]
 internal_to_leaf_colors = ['skyblue' if diff == 0 else 'yellowgreen' if diff < 0 else 'salmon' for diff in internal_to_leaf_diffs]
+
+internal_to_internal_panel.set_title(title, fontsize=14)
 
 internal_to_internal_panel.scatter(
   range(len(internal_to_internal_diffs)),
