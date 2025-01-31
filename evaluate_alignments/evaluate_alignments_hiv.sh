@@ -6,11 +6,11 @@
 #SBATCH --nodes=1
 #SBATCH --mem=50gb
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=20
+#SBATCH --cpus-per-task=200
 #SBATCH --output=/private/groups/corbettlab/alan/panmania-notebook/evaluate_alignments/logs/%x.%A.%a.%j.log
 #SBATCH --error=/private/groups/corbettlab/alan/panmania-notebook/evaluate_alignments/logs/%x.%A.%a.%j.err
 #SBATCH --partition=medium
-#SBATCH --time=04:00:00
+#SBATCH --time=02:00:00
 
 pairs_tsv=data/hiv/hiv20000_pairs.tsv
 data_dir=data/hiv
@@ -23,8 +23,8 @@ mkdir -p "$tmp_dir/results"
 # Create a temporary file to store the pairs and paths
 pairs_file="$tmp_dir/pairs.txt"
 while IFS=' ' read -r parent child; do
-    parent_cleaned=$(echo "$parent" | tr -c '[:alnum:].' '_')
-    child_cleaned=$(echo "$child" |  tr -c '[:alnum:].' '_')
+    parent_cleaned=$(echo -n "$parent" | tr -c '[:alnum:]' '_')
+    child_cleaned=$(echo -n "$child" |  tr -c '[:alnum:]' '_')
     echo -e "$parent $child $parent_cleaned $child_cleaned"
 done < "$pairs_tsv" > "$pairs_file"
 

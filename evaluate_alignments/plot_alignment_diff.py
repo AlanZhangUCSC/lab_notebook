@@ -29,14 +29,27 @@ with open(diff_file, 'r') as f:
     pairs_dict[parent][child] = (int(panman_diff), int(mafft_diff))
 
 
-alignment_diffs = []
+internal_to_internal_diffs = []
+internal_to_leaf_diffs = []
 for parent in pairs_dict.keys():
   for child in pairs_dict[parent].keys():
     # print(parent, child, pairs_dict[parent][child])
     try:
-      alignment_diffs.append(pairs_dict[parent][child][0] - pairs_dict[parent][child][1])
+      if child.startswith('node_'):
+        internal_to_internal_diffs.append(pairs_dict[parent][child][0] - pairs_dict[parent][child][1])
+      else:
+        internal_to_leaf_diffs.append(pairs_dict[parent][child][0] - pairs_dict[parent][child][1])
     except:
       continue
+
+internal_to_internal_diffs = sorted(internal_to_internal_diffs)
+internal_to_internal_first_zero_index = next((i for i, diff in enumerate(internal_to_internal_diffs) if diff == 0), None)
+internal_to_internal_first_positive_index = next((i for i, diff in enumerate(internal_to_internal_diffs) if diff > 0), None)
+
+internal_to_leaf_diffs = sorted(internal_to_leaf_diffs)
+internal_to_leaf_first_zero_index = next((i for i, diff in enumerate(internal_to_leaf_diffs) if diff == 0), None)
+internal_to_leaf_first_positive_index = next((i for i, diff in enumerate(internal_to_leaf_diffs) if diff > 0), None)
+
 
 
 ############
@@ -44,34 +57,63 @@ for parent in pairs_dict.keys():
 ############
 
 plt.style.use('BME163')
-figure_size = (6, 3)
-panel_size = (figure_size[0] - 0.5, figure_size[1] - 0.5)
-panel_coor = (0.4,0.25)
+figure_size = (6, 6)
+panel_size = (figure_size[0] - 0.5, figure_size[1] / 2 - 0.5)
+
+internal_to_internal_panel_coor = (0.4, figure_size[1] / 2)
+internal_to_leaf_panel_coor = (0.4, 0.5 - 0.25)
+
 plt.figure(figsize=figure_size)
-panel = plt.axes(
-  [panel_coor[0] / figure_size[0],
-   panel_coor[1] / figure_size[1],
+internal_to_internal_panel = plt.axes(
+  [internal_to_internal_panel_coor[0] / figure_size[0],
+   internal_to_internal_panel_coor[1] / figure_size[1],
    panel_size[0] / figure_size[0],
    panel_size[1] / figure_size[1]]
 )
 
-panel.set_xlim(-100, len(alignment_diffs) + 100)
-panel.set_ylim(-5000, 5000)
-panel.set_xticks([])
-panel.set_yticks([1000 * i for i in range(-5, 6)])
-panel.set_yticklabels([f'{i}' for i in range(-5, 6)])
-panel.set_ylabel('Alignment difference (kbp)')
-panel.set_title(title)
+internal_to_leaf_panel = plt.axes(
+  [internal_to_leaf_panel_coor[0] / figure_size[0],
+   internal_to_leaf_panel_coor[1] / figure_size[1],
+   panel_size[0] / figure_size[0],
+   panel_size[1] / figure_size[1]]
+)
 
-sorted_alignment_diffs = sorted(alignment_diffs)
-colors = ['skyblue' if diff == 0 else 'salmon' if diff > 0 else 'mediumseagreen' for diff in sorted_alignment_diffs]
-panel.scatter(
-  range(len(sorted_alignment_diffs)),
-  sorted_alignment_diffs,
-  c=colors,
+for panel, diffs, cutoffs, xlabel in zip([internal_to_internal_panel, internal_to_leaf_panel], [internal_to_internal_diffs, internal_to_leaf_diffs], [(internal_to_internal_first_zero_index, internal_to_internal_first_positive_index), (internal_to_leaf_first_zero_index, internal_to_leaf_first_positive_index)], ['internal-to-internal', 'internal-to-leaf']):
+  ylim_kb = 5
+  panel.set_xlim(-100, len(diffs) + 100)
+  panel.set_ylim(-ylim_kb * 1000, ylim_kb * 1000)
+  panel.set_xticks([])
+  panel.set_yticks([1000 * i for i in range(-ylim_kb, ylim_kb + 1)])
+  panel.set_yticklabels([f'{i}' for i in range(-ylim_kb, ylim_kb + 1)])
+  panel.set_yticks([1000 * i for i in np.arange(-ylim_kb, ylim_kb, 0.5)], minor=True)
+  panel.set_ylabel('Alignment difference (kbp)')
+  panel.set_xlabel(f'{xlabel} ({len(diffs)} pairs)')
+
+  panel.grid(True, which='both')
+  panel.grid(which='minor', alpha=0.2, linestyle='--')
+  panel.grid(which='major', alpha=0.5, linestyle='--')
+  first_zero_index, first_positive_index = cutoffs
+  panel.plot([first_zero_index, first_zero_index], [-ylim_kb * 1000, ylim_kb * 1000], color='black', linewidth=0.5, linestyle='--')
+  panel.plot([first_positive_index, first_positive_index], [-ylim_kb * 1000, ylim_kb * 1000], color='black', linewidth=0.5, linestyle='--')
+
+
+internal_to_internal_colors = ['skyblue' if diff == 0 else 'yellowgreen' if diff < 0 else 'salmon' for diff in internal_to_internal_diffs]
+internal_to_leaf_colors = ['skyblue' if diff == 0 else 'yellowgreen' if diff < 0 else 'salmon' for diff in internal_to_leaf_diffs]
+
+internal_to_internal_panel.scatter(
+  range(len(internal_to_internal_diffs)),
+  internal_to_internal_diffs,
+  c=internal_to_internal_colors,
   s=0.5
 )
 
+internal_to_leaf_panel.scatter(
+  range(len(internal_to_leaf_diffs)),
+  internal_to_leaf_diffs,
+  c=internal_to_leaf_colors,
+  s=0.5
+)
+
+
+
 plt.savefig(output_file, dpi=600)
-print(max(alignment_diffs))
-print(min(alignment_diffs))
