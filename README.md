@@ -114,5 +114,6 @@ Then run command below to rebuild capnproto.
 make clean && ./configure && make -j && make install
 ```
 
+\
 As a continuation of `2/1/2025`, I need to assess the alignment quality of the new panMANs. Writing and split the fasta files for nodes on the panMANs are taking too long for `SARS_20000` and `HIV20000`.
 
