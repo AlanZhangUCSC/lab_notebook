@@ -10,7 +10,7 @@
 #SBATCH --output=/private/groups/corbettlab/alan/panmania-notebook/evaluate_alignments/logs/%x.%A.%a.%j.log
 #SBATCH --error=/private/groups/corbettlab/alan/panmania-notebook/evaluate_alignments/logs/%x.%A.%a.%j.err
 #SBATCH --partition=medium
-#SBATCH --time=02:00:00
+#SBATCH --time=04:00:00
 
 pairs_tsv=data/hiv/hiv20000_pairs.tsv
 data_dir=data/hiv
