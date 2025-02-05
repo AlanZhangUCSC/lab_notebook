@@ -47,4 +47,4 @@ python3 plot_pseudo_chaining_vs_seq_similarity.py simulated_reads.sorted.md.sam 
 ![pseudo-chaining score vs sequence similarity](./pseudo_chaining_vs_seq_similarity.png)
 
 \
-Looks not very good.... This is probably not a good comparison. We care more about if pseudo-chaining score is good at **discerning between haplotypes**. Need to find a better way to illustrate this.
+Does not look very good.... This is probably not a good comparison. We care more about if pseudo-chaining score is good at **discerning between haplotypes**. Need to find a better way to illustrate this.
