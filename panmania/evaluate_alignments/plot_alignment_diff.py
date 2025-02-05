@@ -1,6 +1,7 @@
 import matplotlib.patches as mplpatches
 from collections import defaultdict
 import matplotlib.pyplot as plt
+import matplotlib.font_manager
 import numpy as np
 import argparse
 import glob

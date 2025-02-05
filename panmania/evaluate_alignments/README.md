@@ -12,6 +12,22 @@ sbatch evaluate_alignments/evaluate_alignments_hiv.sh
 python evaluate_alignments/plot_alignment_diff.py evaluate_alignments/out/hiv20000_alignment_differences.tsv evaluate_alignments/data/hiv/hiv20000_pairs.tsv hiv evaluate_alignments/out/hiv20000_alignment_differences.png
 ```
 
+RSV
 ![RSV](out/rsv4000_alignment_differences.png)
-![HIV](out/hiv20000_alignment_differences.png)
+
+\
+New RSV tree
+![RSV](out/rsv4000_alignment_differences_new.png)
+
+
+\
+SARS
 ![SARS](out/sars20000_alignment_differences.png)
+
+\
+New SARS tree
+![SARS](out/sars20000_alignment_differences_new.png)
+
+\
+HIV
+![HIV](out/hiv20000_alignment_differences.png)
