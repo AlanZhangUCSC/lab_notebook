@@ -138,8 +138,6 @@ The final figure is saved in `panmama/pseudo_chaining-vs-sequence_similarity/pse
 
 - [ ] Finish writing the first draft of the specific aim section of my thesis proposal.
 - [ ] Really do finish formalizing the method for calling consensus.
-- [x] ~~Make a figure that illustrates the effectiveness of pseudo-chaining scores at discerning between sequences.~~ I don't think I'll do this anything. It's not important. Need to finish other stuff first.
-- [x] ~~Complete the alignment quality assessment for new panMANs.~~ *New sars20000 panman looks about the same as the old one. New rsv4000 panman looks **worse** than the old one*
 
 ### Logistics and general work
 
@@ -149,7 +147,7 @@ I talked a little about panMANIA then the consensus calling step with Russ. Russ
 ### panMANIA
 
 I just plotted the alignment differences for the new SARS and RSV panMANs (HIV is skipped because it's taking too long. Seems like the aligned sequences in the new HIV panMAN are very long). The new SARS panMAN looks pretty identical to the old SARs panMAN but **the new RSV panMAN looks **worse** than the old one**. See `panmania/evaluate_alignments/README.md` for more details.
-
+xxxx
 Maybe it is worth to also fix the alignments in panMAN for Aim 2.
 
 Notes below need to be beautified and executed. This is a place holder so I don't forget
@@ -173,6 +171,16 @@ Notes below need to be beautified and executed. This is a place holder so I don'
 
 ## 2/6/2025
 
+### To-do
+
+- [ ] Really do finish formalizing the method for calling consensus.
+- [x] ~~Finish writing the first draft of the specific aim section of my thesis proposal.~~ *See `thesis_proposal/` directory for the draft*
+
 ### Logistics and general work
 
-I finished the first draft of my specific aims section for my thesis proposal. Aim 3 still needs a lot of work. See
+I finished the first draft of my specific aims section for my thesis proposal. Aim 3 still needs a lot of work. See `thesis_proposal/` section for the first draft.
+
+### panMANIA
+
+With the limited time I have today, I will write up the script for identifying problematic block states that cause large chunks of misalignment. See `panmania/evaluate_alignments/` for details
+
