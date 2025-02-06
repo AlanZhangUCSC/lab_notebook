@@ -170,3 +170,9 @@ Notes below need to be beautified and executed. This is a place holder so I don'
   - *If there are haplotypes where that cryptic mutation is assigned to that haplotype only, assign it.*
   - *If not use maximum likelihood.*
 - *If no cryptic mutation, assign reference*
+
+## 2/6/2025
+
+### Logistics and general work
+
+I finished the first draft of my specific aims section for my thesis proposal. Aim 3 still needs a lot of work. See
