@@ -92,7 +92,7 @@ for panel, diffs, cutoffs, xlabel in zip([internal_to_internal_panel, internal_t
   panel.set_yticklabels([f'{i}' for i in range(-ylim_kb, ylim_kb + 1)])
   panel.set_yticks([1000 * i for i in np.arange(-ylim_kb, ylim_kb, 0.5)], minor=True)
   panel.set_ylabel('Alignment difference (kbp)')
-  panel.set_xlabel(f'{xlabel} ({len(diffs)} pairs)', fontsize=6)
+  panel.set_xlabel(f'{xlabel} ({len(diffs)} pairs)', fontsize=8)
 
   panel.grid(True, which='both')
   panel.grid(which='minor', alpha=0.2, linestyle='--')
@@ -105,7 +105,7 @@ for panel, diffs, cutoffs, xlabel in zip([internal_to_internal_panel, internal_t
 internal_to_internal_colors = ['skyblue' if diff == 0 else 'yellowgreen' if diff < 0 else 'salmon' for diff in internal_to_internal_diffs]
 internal_to_leaf_colors = ['skyblue' if diff == 0 else 'yellowgreen' if diff < 0 else 'salmon' for diff in internal_to_leaf_diffs]
 
-internal_to_internal_panel.set_title(f'{title} (panMAN alignment - MAFFT alignment)', fontsize=14)
+internal_to_internal_panel.set_title(f'{title}\n(panMAN alignment - MAFFT alignment)', fontsize=12)
 
 internal_to_internal_panel.scatter(
   range(len(internal_to_internal_diffs)),
@@ -152,14 +152,14 @@ for panel, diffs, xlabel in zip([internal_to_internal_diff_panel, internal_to_le
   panel.set_yticklabels([f'{i}' for i in range(-ylim_kb, ylim_kb + 1)])
   panel.set_yticks([1000 * i for i in np.arange(-ylim_kb, ylim_kb, 0.5)], minor=True)
   panel.set_ylabel('Alignment difference (kbp)')
-  panel.set_xlabel(f'{xlabel} ({len(diffs)} pairs)', fontsize=6)
+  panel.set_xlabel(f'{xlabel} ({len(diffs)} pairs)', fontsize=8)
 
   panel.grid(True, which='both')
   panel.grid(which='minor', alpha=0.2, linestyle='--')
   panel.grid(which='major', alpha=0.5, linestyle='--')
   panel.plot([-100, len(diffs) + 100], [0, 0], color='black', linewidth=0.5, linestyle='--')
 
-internal_to_internal_diff_panel.set_title(f'{title} (panMAN alignment and MAFFT alignment for diffs > 0)', fontsize=14)
+internal_to_internal_diff_panel.set_title(f'{title}\n(panMAN alignment and MAFFT alignment for diffs > 0)', fontsize=12)
 
 internal_to_internal_diff_panel.scatter(
   range(len(internal_to_internal_diff_diffs)),

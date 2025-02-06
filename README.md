@@ -141,8 +141,32 @@ The final figure is saved in `panmama/pseudo_chaining-vs-sequence_similarity/pse
 - [x] ~~Make a figure that illustrates the effectiveness of pseudo-chaining scores at discerning between sequences.~~ I don't think I'll do this anything. It's not important. Need to finish other stuff first.
 - [x] ~~Complete the alignment quality assessment for new panMANs.~~ *New sars20000 panman looks about the same as the old one. New rsv4000 panman looks **worse** than the old one*
 
+### Logistics and general work
+
+#### Meeting with Russ
+I talked a little about panMANIA then the consensus calling step with Russ. Russ gave a really good sugesstion on assuming there no back mutations. See notes below in `panMAMA` section.
+
 ### panMANIA
 
 I just plotted the alignment differences for the new SARS and RSV panMANs (HIV is skipped because it's taking too long. Seems like the aligned sequences in the new HIV panMAN are very long). The new SARS panMAN looks pretty identical to the old SARs panMAN but **the new RSV panMAN looks **worse** than the old one**. See `panmania/evaluate_alignments/README.md` for more details.
 
 Maybe it is worth to also fix the alignments in panMAN for Aim 2.
+
+Notes below need to be beautified and executed. This is a place holder so I don't forget
+
+*I have an idea to identify problematic block states. Will try to implement and see how it goes.*
+- *Record positions of mismatches in the panMAN alignment. Merge positions into ranges. Identify nearby ranges with identical lengths of mismatches.*
+- *Nearby ranges with identical lengths of mismatches are likely to be problematic block states.*
+- *Try to align those two ranges together and see how well they align.*
+
+
+### panMAMA
+
+Notes below need to be beautified and executed. This is a place holder so I don't forget
+
+*Russ has a good idea to call consensus*
+- *Assume there's not back mutation*
+- *If there is a cryptic mutation, assign that cryptic mutation heuristically*
+  - *If there are haplotypes where that cryptic mutation is assigned to that haplotype only, assign it.*
+  - *If not use maximum likelihood.*
+- *If no cryptic mutation, assign reference*
