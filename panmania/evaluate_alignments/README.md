@@ -160,3 +160,52 @@ cut -c 249963-251859 example/merged_sequence.txt
 The sequences between each 120-block and 146-block are identical. The sequence between two 140-120-block pairs is all gaps for one of the nodes. This allows use to swap the 120-146 block pairs for one of the nodes to fix the alignments.
 
 ### Scripts
+
+#### Get the block ranges
+
+I need to first get the ranges of all the blocks. Not gonna bother to write a new function so I will add a couple lines to existing pipeline and do a dummy run just to get the block ranges.
+
+To do this add code below in `pmi::place_per_read` function in `pmi.cpp` in `panmap` src directory.
+
+```cpp
+std::ofstream blockRangesFile(prefix + ".block_ranges.tsv");
+for (const auto& range : blockRanges) {
+  blockRangesFile << range.first << "\t" << range.second << std::endl;
+}
+blockRangesFile.close();
+```
+
+After rebuild, run command below for each tree. Using the old panMANs for now since they seem to look better than the new panMANs (I think the only difference is that old panMANs were encoded using protobuff and new panMANs are encoded using capnproto).
+
+```
+/private/groups/corbettlab/alan/panmap/build/bin/panmap /private/groups/corbettlab/alan/panmama-snakemake/workflow/evals/rsv/k19_s8_null/panman_index/rsv4000.panman data/dummy.fastq --place-per-read --prefix data/rsv --preem-filter-method mbc --redo-read-threshold 0
+```
+
+Remove output files we don't need. Rename and move the block_range file
+
+```
+rm data/rsv.abundance data/rsv.error.log data/rsv_filtered_nodes.txt data/rsv.log
+mv data/rsv.block_ranges.tsv data/rsv/rsv4000_block_ranges.tsv
+```
+
+Make sure to delete the temporary code and rebuild to restore codebase and executables to orignal state.
+
+#### Look for misaligned blocks
+
+`search_ma_blocks.py` a python script that looks for misaligned blocks in which two different blocks with identical sequences were turned on between a parent and a child node. It outputs the number of mismatches in the misaligned blocks, the number of mismatches in the misaligned blocks after corrections, the mismatch count of the entire original sequence, and the expected number of mismatches of the entire sequence after correction.
+
+```
+python3 search_ma_blocks.py example/KF973330_1.fasta example/node_82.fasta --block_ranges data/rsv/rsv4000_block_ranges.tsv
+```
+
+```
+#mismatch_count_in_ma_blocks: 1222
+#mismatch_count_in_corrected_blocks: 0
+#all_mismatch_count: 1226
+#expected_mismatch_count_after_correction: 4
+#block1 block2  mismatch_count  num_nuc_pairs
+109     110     0       162
+175     184     0       225
+182     197     0       224
+```
+

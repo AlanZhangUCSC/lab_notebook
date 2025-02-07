@@ -184,3 +184,11 @@ I finished the first draft of my specific aims section for my thesis proposal. A
 
 With the limited time I have today, I will write up the script for identifying problematic block states that cause large chunks of misalignment. See `panmania/evaluate_alignments/` for details
 
+## 2/7/2025
+
+### To-do
+
+- [ ] Really do finish formalizing the method for calling consensus.
+- [ ] Quantify the prevalence of problematic block states
+
+### panMANIA
