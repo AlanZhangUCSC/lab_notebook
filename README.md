@@ -194,3 +194,14 @@ With the limited time I have today, I will write up the script for identifying p
 ### panMANIA
 
 Working on quantifying the prevalence of problematic block states
+
+## 2/9/2025
+
+### To-do
+
+- [x] ~~Quantify the prevalence of problematic block states~~
+- [ ] Really do finish formalizing the method for calling consensus.
+
+### panMAMA
+
+### panMANIA

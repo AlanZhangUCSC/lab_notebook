@@ -114,6 +114,8 @@ for i in range(11):
     diff_distribution_panel.add_patch(
       mplpatches.Rectangle((i + offset, 0), 0.4, diff_bin, color=color)
     )
+    if diff_bin <= 100:
+      diff_distribution_panel.text(i + offset + 0.2, diff_bin, f'{diff_bin}', ha='center', va='bottom')
 x_ticks = []
 x_ticklabels = []
 for i in range(11):
@@ -130,6 +132,7 @@ else:
   diff_distribution_panel.set_yticks([i * 100 for i in range(int(diff_distribution_panel.get_ylim()[1] // 100 + 1))])
 diff_distribution_panel.set_ylabel('Number of pairs')
 diff_distribution_panel.set_xlabel('panMAN and MAFFT alignment difference')
+diff_distribution_panel.set_title(f'Distribution of alignment differences\n({title})', fontsize=12)
 
 ##################
 ## legend panel ##
@@ -148,8 +151,8 @@ legend_panel.add_patch(
 legend_panel.add_patch(
   mplpatches.Rectangle((0.1, 0.1), 0.1, 0.1, color='teal')
 )
-legend_panel.text(0.3, 0.3, 'panMAN - MAFFT alignment before correction', ha='left', va='baseline')
-legend_panel.text(0.3, 0.1, 'panMAN - MAFFT alignment after correction', ha='left', va='baseline')
+legend_panel.text(0.3, 0.3, '(panMAN - MAFFT) alignment before correction', ha='left', va='baseline')
+legend_panel.text(0.3, 0.1, '(panMAN - MAFFT) alignment after correction', ha='left', va='baseline')
 
 legend_panel.axis('off')
 
@@ -175,7 +178,7 @@ for panel, diff_sets, xlabel in zip([internal_to_internal_diff_panel, internal_t
   panel.grid(which='major', alpha=0.5, linestyle='--')
   panel.plot([-100, len(diffs) + 100], [0, 0], color='black', linewidth=0.5, linestyle='--')
 
-internal_to_internal_diff_panel.set_title(f'{title}\n(panMAN alignment and MAFFT alignment for diffs > 0)', fontsize=12)
+internal_to_internal_diff_panel.set_title(f'panMAN alignment and MAFFT alignment for diffs > 0\n({title})', fontsize=12)
 
 internal_to_internal_diff_panel.scatter(
   range(len(internal_to_internal_diffs)),
