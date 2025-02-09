@@ -116,19 +116,19 @@ block_ranges_pickle_file = os.path.join(block_ranges_file_dir, f'{block_ranges_f
 
 block_ranges = FastIntervalMap()
 block_ranges_by_id = {}
-if os.path.exists(block_ranges_pickle_file):
-  print(f'Loading block ranges from {block_ranges_pickle_file}', file=sys.stderr)
-  with open(block_ranges_pickle_file, 'rb') as fh:
-    block_ranges = pickle.load(fh)
-else:
-  print(f'Loading block ranges from {block_ranges_file}', file=sys.stderr)
-  with open(block_ranges_file) as fh:
-    for i, line in enumerate(fh):
-      start, end = map(int, line.strip().split('\t'))
-      block_ranges.add_interval(i, start, end)
-      block_ranges_by_id[i] = (start, end)
-  with open(block_ranges_pickle_file, 'wb') as fh:
-    pickle.dump(block_ranges, fh)
+# if os.path.exists(block_ranges_pickle_file):
+#   print(f'Loading block ranges from {block_ranges_pickle_file}', file=sys.stderr)
+#   with open(block_ranges_pickle_file, 'rb') as fh:
+#     block_ranges = pickle.load(fh)
+# else:
+# print(f'Loading block ranges from {block_ranges_file}', file=sys.stderr)
+with open(block_ranges_file) as fh:
+  for i, line in enumerate(fh):
+    start, end = map(int, line.strip().split('\t'))
+    block_ranges.add_interval(i, start, end)
+    block_ranges_by_id[i] = (start, end)
+with open(block_ranges_pickle_file, 'wb') as fh:
+  pickle.dump(block_ranges, fh)
 
 gap_to_nuc_block_groups = []
 seen_blocks = set()

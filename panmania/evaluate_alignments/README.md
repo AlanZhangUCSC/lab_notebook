@@ -17,24 +17,24 @@ sbatch evaluate_alignments/evaluate_alignments_hiv.sh
 python evaluate_alignments/plot_alignment_diff.py evaluate_alignments/out/hiv20000_alignment_differences.tsv evaluate_alignments/data/hiv/hiv20000_pairs.tsv hiv evaluate_alignments/out/hiv20000_alignment_differences.png
 ```
 
-RSV
+**RSV**
 ![RSV](out/rsv4000_alignment_differences.png)
 
 \
-New RSV tree
+**New RSV tree**
 ![RSV](out/rsv4000_alignment_differences_new.png)
 
 
 \
-SARS
+**SARS**
 ![SARS](out/sars20000_alignment_differences.png)
 
 \
-New SARS tree
+**New SARS tree**
 ![SARS](out/sars20000_alignment_differences_new.png)
 
 \
-HIV
+**HIV**
 ![HIV](out/hiv20000_alignment_differences.png)
 
 ## Quantify the prevalence of problematic block states
@@ -208,4 +208,23 @@ python3 search_ma_blocks.py example/KF973330_1.fasta example/node_82.fasta --blo
 175     184     0       225
 182     197     0       224
 ```
+
+The following commands run the `search_ma_blocks.py` for every pair, and plot the expected results after the correction of misaligned nodes.
+```
+sbatch evaluate_ma_blocks_rsv.sh
+
+python3 plot_ma_correct.py out/rsv4000_alignment_exepcted_correction.tsv data/rsv/rsv4000_pairs.tsv RSV out/rsv4000_alignment_exepcted_correction.png
+```
+
+**RSV**
+![RSV](out/rsv4000_alignment_exepcted_correction.png)
+
+\
+**SARS**
+![SARS](out/sars20000_alignment_exepcted_correction.png)
+
+\
+**HIV**
+![HIV](out/hiv20000_alignment_exepcted_correction.png)
+
 
