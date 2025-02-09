@@ -6,8 +6,8 @@ This notebook will track the progress of my work in the lab.
 
 ### panMANIA
 
-~~To build the panMAN using Dockerfile, see `build_panman` directory.~~
-To build the panMAN see notes on `2/2/2025`.
+~~To build the panMAN using Dockerfile, see [panmania/build_panman/](panmania/build_panman/) directory.~~
+To build the panMAN see notes on [2/2/2025](#222025).
 
 PanMAN built using Dockerfile is broken. Currently using Summit's docker image.
 
@@ -29,7 +29,7 @@ sbatch evaluate_alignments/evaluate_alignments_hiv.sh
 python evaluate_alignments/plot_alignment_diff.py evaluate_alignments/out/hiv20000_alignment_differences.tsv evaluate_alignments/data/hiv/hiv20000_pairs.tsv hiv evaluate_alignments/out/hiv20000_alignment_differences.png
 ```
 
-For results, see `panmania/evaluate_alignments/README.md`.
+For results, see [panmania/evaluate_alignments](panmania/evaluate_alignments).
 
 ## 2/1/2025
 
@@ -142,12 +142,12 @@ The final figure is saved in `panmama/pseudo_chaining-vs-sequence_similarity/pse
 ### Logistics and general work
 
 #### Meeting with Russ
-I talked a little about panMANIA then the consensus calling step with Russ. Russ gave a really good sugesstion on assuming there no back mutations. See notes below in `panMAMA` section.
+I talked a little about panMANIA then the consensus calling step with Russ. Russ gave a really good sugesstion on assuming there no back mutations. See notes below in panMAMA section.
 
 ### panMANIA
 
-I just plotted the alignment differences for the new SARS and RSV panMANs (HIV is skipped because it's taking too long. Seems like the aligned sequences in the new HIV panMAN are very long). The new SARS panMAN looks pretty identical to the old SARs panMAN but **the new RSV panMAN looks **worse** than the old one**. See `panmania/evaluate_alignments/README.md` for more details.
-xxxx
+I just plotted the alignment differences for the new SARS and RSV panMANs (HIV is skipped because it's taking too long. Seems like the aligned sequences in the new HIV panMAN are very long). The new SARS panMAN looks pretty identical to the old SARs panMAN but **the new RSV panMAN looks **worse** than the old one**. See [panmania/evaluate_alignments](panmania/evaluate_alignments) for more details.
+
 Maybe it is worth to also fix the alignments in panMAN for Aim 2.
 
 Notes below need to be beautified and executed. This is a place holder so I don't forget
@@ -174,15 +174,15 @@ Notes below need to be beautified and executed. This is a place holder so I don'
 ### To-do
 
 - [ ] Really do finish formalizing the method for calling consensus.
-- [x] ~~Finish writing the first draft of the specific aim section of my thesis proposal.~~ *See `thesis_proposal/` directory for the draft*
+- [x] ~~Finish writing the first draft of the specific aim section of my thesis proposal.~~ *See [thesis_proposal/](thesis_proposal/) directory for the draft*
 
 ### Logistics and general work
 
-I finished the first draft of my specific aims section for my thesis proposal. Aim 3 still needs a lot of work. See `thesis_proposal/` section for the first draft.
+I finished the first draft of my specific aims section for my thesis proposal. Aim 3 still needs a lot of work. See [thesis_proposal/](thesis_proposal/) section for the first draft.
 
 ### panMANIA
 
-With the limited time I have today, I will write up the script for identifying problematic block states that cause large chunks of misalignment. See `panmania/evaluate_alignments/` for details
+With the limited time I have today, I will write up the script for identifying problematic block states that cause large chunks of misalignment. See [panmania/evaluate_alignments/](panmania/evaluate_alignments/) for details
 
 ## 2/7/2025
 
