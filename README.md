@@ -199,9 +199,13 @@ Working on quantifying the prevalence of problematic block states
 
 ### To-do
 
-- [x] ~~Quantify the prevalence of problematic block states~~
 - [ ] Really do finish formalizing the method for calling consensus.
+- [x] ~~Quantify the prevalence of problematic block states~~
 
 ### panMAMA
 
+
+
 ### panMANIA
+
+I fininally finished quantifying the prevalence of problematic block states (see [panmania/evaluate_alignments/](panmania/evaluate_alignments/#quantify-the-prevalence-of-problematic-block-states)). It looks like it's definitely worth fixing the misaligned blocks or representing them differently (a different layer of block coordinate?). Will talk to Russ about it.
