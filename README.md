@@ -199,13 +199,41 @@ Working on quantifying the prevalence of problematic block states
 
 ### To-do
 
-- [ ] Really do finish formalizing the method for calling consensus.
+- [x] ~~Really do finish formalizing the method for calling consensus.~~
 - [x] ~~Quantify the prevalence of problematic block states~~
 
 ### panMAMA
 
+Today I will try to finish formalizing consensus calling...
 
+Finally finished formalizing consensus calling. See [panmama/consensus_calling/](panmama/consensus_calling/) for sample scripts.
+
+Pseudocode:
+```
+for line in vcf_all:
+  possible_alleles = all alleles with depth > abundance - tolerance
+
+  split reads into groups by what other haplotypes they are assigned to
+
+  if an allele-determining group (reads assigned to only the current haplotype) exists:
+    assign the allele aligned in the allele-determining group
+  else
+    iterate through the groups of reads and calculate the likelihoods of the current haplotype having each possible allele
+    
+    split the groups of reads futher into groups by the number of haplotypes they are assigned to.
+    
+    within each group split by the number of haplotypes they are assigned to, select the subgroup with the highest likelihood ratio. This is the group's representative likelihood ratio
+
+    accumulate the likelihood ratio for each possible allele across the groups
+
+    if highest accumulated likelihood ratio - second highest accumluated likelihood ratio > threshold:
+      assign allele with the highest accumulate likelihood ratio
+    else:
+      assign reference allele
+```
 
 ### panMANIA
 
 I fininally finished quantifying the prevalence of problematic block states (see [panmania/evaluate_alignments/](panmania/evaluate_alignments/#quantify-the-prevalence-of-problematic-block-states)). It looks like it's definitely worth fixing the misaligned blocks or representing them differently (a different layer of block coordinate?). Will talk to Russ about it.
+
+Fixing this should also substantially improve the runtime of `panmap` and `panMAMA`.
