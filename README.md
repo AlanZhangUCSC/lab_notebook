@@ -234,6 +234,43 @@ for line in vcf_all:
 
 ### panMANIA
 
+
 I fininally finished quantifying the prevalence of problematic block states (see [panmania/evaluate_alignments/](panmania/evaluate_alignments/#quantify-the-prevalence-of-problematic-block-states)). It looks like it's definitely worth fixing the misaligned blocks or representing them differently (a different layer of block coordinate?). Will talk to Russ about it.
 
 Fixing this should also substantially improve the runtime of `panmap` and `panMAMA`.
+
+## 2/11/2025
+
+### To-do
+
+- [ ] Characterize errors in consensus calling in panMAMA
+- [x] ~~Develop a formal pipeline for evaluating panMAN internal alignments~~
+
+### panMAMA
+
+Today I will manually look through the output of consensus calling and characterize the errors. See [panmama/consensus_calling/](panmama/consensus_calling/) for detail.
+
+Idea: perhaps I can also calculate the average sequence similarity of the reference and reads supporting each allele. 
+
+I think I'll also assess and plot the threshold for assigning alleles.
+
+### panMANIA
+
+Steps for developing a formal pipeline for testing panMAN internal alignments.
+  
+1. Add a function in panMAN to output the ranges of all blocks
+
+2. Add a function in panMAN to randomly selectly N pairs of nodes and output their aligned sequences and unaligned sequences
+
+3. Run my other scripts detailed in [panmania/evaluate_alignments/](panmania/evaluate_alignments/)
+
+## 2/12/2025
+
+### To-do
+
+- [ ] Characterize errors in consensus calling in panMAMA
+
+### panMAMA
+
+### panMANIA
+

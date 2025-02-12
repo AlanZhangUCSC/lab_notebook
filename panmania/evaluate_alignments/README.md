@@ -4,6 +4,7 @@
 
 [Quantify the prevalence of problematic block states](#quantify-the-prevalence-of-problematic-block-states)
 
+
 ## Difference between panMAN alignment MAFFT alignment
 Inside evaluate_alignments, `parse_newick_to_pairs.py` is a script that would parse the newick tree and output the parent-child pairs in depth first order. The sequences of each parent-child pair will be compared.
 
@@ -161,7 +162,9 @@ The sequences between each 120-block and 146-block are identical. The sequence b
 
 ### Scripts
 
-#### Get the block ranges
+#### Old panMANs
+
+##### Get the block ranges
 
 I need to first get the ranges of all the blocks. Not gonna bother to write a new function so I will add a couple lines to existing pipeline and do a dummy run just to get the block ranges.
 
@@ -190,7 +193,7 @@ mv data/rsv.block_ranges.tsv data/rsv/rsv4000_block_ranges.tsv
 
 Make sure to delete the temporary code and rebuild to restore codebase and executables to orignal state.
 
-#### Look for misaligned blocks
+##### Look for misaligned blocks
 
 `search_ma_blocks.py` a python script that looks for misaligned blocks in which two different blocks with identical sequences were turned on between a parent and a child node. It outputs the number of mismatches in the misaligned blocks, the number of mismatches in the misaligned blocks after corrections, the mismatch count of the entire original sequence, and the expected number of mismatches of the entire sequence after correction.
 
@@ -227,4 +230,86 @@ python3 plot_ma_correct.py out/rsv4000_alignment_exepcted_correction.tsv data/rs
 **HIV**
 ![HIV](out/hiv20000_alignment_exepcted_correction.png)
 
+#### New panMANs
+
+##### Get the block ranges
+
+I added a function in `summary.cpp` to print block ranges of an input tree to a tsv file
+
+```
+panmanUtils panmans/rsv4000.panman --block-ranges -o rsv4000_block_ranges.tsv
+```
+
+I also added a function in `fasta.cpp` to output a random subset of node pairs from a tree (If `num-subset` is greater than total number of nodes in the tree all pairs are printed).
+
+```
+panmanUtils panmans/rsv4000.panman -F --num-subset 99999999
+```
+
+**unaligned** sequences are output in standard **fasta** format
+
+**aligned** sequences are output in a "**fastags**" format where blocks are split into lines and off blocks are represented as '.'
+
+An example of fastags format
+```
+.
+------------------------------------------------------------------------TGGGGCAAATGCAAACATGTCCAAAACCAAGGACCAACGCACCGCCAAGACACTAGAGAGGACCTGGGACACTCTCAATCATCTA>
+--C-------AAAGTCACACTAACAACTGCAATCATACAAGATGCAACGAACCAGATCAAGAACACAACCCCAACATACCTTACCCAGAATCCCCAGCTTGGAATCATCTTCTCCAATCTGTCCGGAACTACATCACAATCCACCACCATACTAGCC>
+.
+.
+CCAAATATCACCTAGCAAACCCACCACAAAACAACGCCAAAATAAACCACAAAACAAACCCAACAATGATTTTCACTTTGAAGTGTTCAATTTTGTACCCT
+.
+.
+```
+
+This allows efficient storage and comparison of panMAN aligned sequences.
+
+Everything should be output to an `info/` folder. Move and rename the foler.
+
+```
+mv info panmans/rsv4000_sequences
+```
+
+Use the new `search_ma_blocks_new_panman.py` to look for potential misaligned blocks.
+
+```
+python3 search_ma_blocks_new_panman.py rsv4000_sequences/KF973330_1.aligned.fastags rsv4000_sequences/node_82.aligned.fastags
+```
+
+```
+#total_diffs: 1202
+#corrected_diffs: 228
+#diffs_in_corrected_blocks: 1
+#fastags_file_1:../../../panmania/panman/panmans/rsv4000_sequences/KF973330_1.aligned.fastags
+#fastags_file_2:../../../panmania/panman/panmans/rsv4000_sequences/node_82.aligned.fastags
+#ma_block_1     ma_block_2      num_diffs       num_nuc_pairs   num_mismatched_nuc_pairs
+373     367     0       249     0
+255     272     1       238     1
+```
+
+```
+sbatch evaluate_ma_blocks_new_rsv.sh
+```
+
+Plot the results of RSV, HIV, SARS, and SARS8mil.
+
+```
+python3 plot_ma_correct_new_panman.py out/rsv4000_alignment_exepcted_correction_new_panman.tsv 'new RSV panman' out/rsv4000_alignment_exepcted_correction_new_panman.png
+```
+
+Plot the results of TB. TB panMAN alignments were compared to minimap2 alignments because they are too big to align with MAFFT. 
+
+```
+python3 plot_ma_correct_new_tb.py out/tb400_alignment_exepcted_correction_new_panman.tsv 'new TB panman' out/tb400_alignment_exepcted_correction_new_panman.png
+```
+
+![RSV](out/rsv4000_alignment_exepcted_correction_new_panman.png)
+
+![HIV](out/hiv20000_alignment_exepcted_correction_new_panman.png)
+
+![SARS](out/sars20000_alignment_exepcted_correction_new_panman.png)
+
+![SARS8mil](out/sars8mil_alignment_exepcted_correction_new_panman.png)
+
+![TB](out/tb400_alignment_exepcted_correction_new_panman.png)
 
