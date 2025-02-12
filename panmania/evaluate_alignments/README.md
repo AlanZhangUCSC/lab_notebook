@@ -234,7 +234,7 @@ python3 plot_ma_correct.py out/rsv4000_alignment_exepcted_correction.tsv data/rs
 
 ##### Get the block ranges
 
-I added a function in `summary.cpp` to print block ranges of an input tree to a tsv file
+In my [forked panman](https://github.com/AlanZhangUCSC/panman), I added a function in `summary.cpp` to print block ranges of an input tree to a tsv file
 
 ```
 panmanUtils panmans/rsv4000.panman --block-ranges -o rsv4000_block_ranges.tsv
