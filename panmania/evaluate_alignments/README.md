@@ -297,7 +297,7 @@ Plot the results of RSV, HIV, SARS, and SARS8mil.
 python3 plot_ma_correct_new_panman.py out/rsv4000_alignment_exepcted_correction_new_panman.tsv 'new RSV panman' out/rsv4000_alignment_exepcted_correction_new_panman.png
 ```
 
-Plot the results of TB. TB panMAN alignments were compared to minimap2 alignments (using `-x asm20 -w 5` parameters) because they are too big to align with MAFFT. 
+Plot the results of TB. TB panMAN alignments were compared to minimap2 alignments (using `-x asm20 -w 5` parameters) because they are too big to align with MAFFT. Might need to tune the minimap2 parameters to get better sensitivity.
 
 ```
 python3 plot_ma_correct_new_tb.py out/tb400_alignment_exepcted_correction_new_panman.tsv 'new TB panman' out/tb400_alignment_exepcted_correction_new_panman.png

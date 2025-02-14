@@ -268,9 +268,25 @@ Steps for developing a formal pipeline for testing panMAN internal alignments.
 
 ### To-do
 
-- [ ] Characterize errors in consensus calling in panMAMA
+- [x] ~~Characterize errors in consensus calling in panMAMA~~
+
+### panMAMA
+See [panmama/consensus_calling/](panmama/consensus_calling/) for details.
+
+## 2/13/2025
+
+### To-do
+
+- [ ] Improve panMAMA consensus calling
 
 ### panMAMA
 
-### panMANIA
+I fixed several issues in the consensus calling step.
 
+1. Implemented more clever way to handle when there is only one read group or all read groups support the same allele.
+
+2. Partially incorporated read to reference sequence similairty into consensus calling. Currently support raw counts but can take position into account as well (counting reads mapped to the same position only once).
+
+3. Still need to implement the 2nd round of ambiguity resolution.
+
+4. Need to implement a way to handle indels.
