@@ -1,4 +1,0 @@
-true_haplotype	consensus	closest_true	snp_dist	gap_edge_corrected_dist
-MH828505_1	MH828505.1.consensus.fa	.	0	0	0	15227	.	.
-MN535098_1	MN535098.1.consensus.fa	.	0	0	0	15019	.	.
-.	MW160815.1.consensus.fa	MH828505_1	1	0	0	15216	12487	15217,15218,15219,15220,15221,15222,15223,15224,15225,15226,15227

@@ -1,6 +1,0 @@
-true_haplotype	consensus	closest_true	snp_dist	gap_edge_corrected_dist
-KJ939951_1	KJ939951.1.consensus.fa	.	0	0	0	15209	.	.
-KM042391_1	KM042391.1.consensus.fa	.	1	0	0	15154	15146	.
-KU950478_1	KU950478.1.consensus.fa	.	0	0	0	15227	.	.
-MZ515644_1	MZ515644.1.consensus.fa	.	0	0	0	15272	.	.
-MZ515860_1	node_3728.consensus.fa	.	0	0	0	15275	.	.
