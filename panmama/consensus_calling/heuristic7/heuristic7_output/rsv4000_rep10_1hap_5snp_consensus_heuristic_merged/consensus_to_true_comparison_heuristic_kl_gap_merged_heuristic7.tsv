@@ -1,0 +1,3 @@
+true_haplotype	consensus	closest_true	snp_dist	gap_edge_corrected_dist
+OM857156_1	OM857156.1.consensus.fa	.	0	0	0	14958	.	.
+.	MH760649.1.consensus.fa	OM857156_1	8	0	0	14958	5378,5420,5459,5509,5538,5562,5610,10906	.

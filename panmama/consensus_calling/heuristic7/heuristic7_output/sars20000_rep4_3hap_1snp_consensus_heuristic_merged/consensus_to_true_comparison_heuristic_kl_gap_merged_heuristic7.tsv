@@ -1,0 +1,4 @@
+true_haplotype	consensus	closest_true	snp_dist	gap_edge_corrected_dist
+England_PHEC_YY8EX8C_2022_OX692669_1_2022_10_14	England_PHEC-YY8EX8C_2022_OX692669.1_2022-10-14.consensus.fa	.	0	0	0	29843	.	.
+England_QEUH_9B5229_2020_OA994577_1_2020_09_03	node_7637.consensus.fa	.	0	0	11	29902	.	0,1,2,3,4,5,6,7,8,9,10
+OY970714_1_2023_11_22	OY970714.1_2023-11-22.consensus.fa	.	0	0	0	29846	.	.

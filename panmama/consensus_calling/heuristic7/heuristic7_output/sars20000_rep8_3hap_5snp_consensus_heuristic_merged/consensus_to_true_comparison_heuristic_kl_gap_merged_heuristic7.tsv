@@ -1,0 +1,4 @@
+true_haplotype	consensus	closest_true	snp_dist	gap_edge_corrected_dist
+Denmark_DCGC_199357_2021_OV825136_1_2021_10_28	Denmark_DCGC-194619_2021_OW399448.1_2021-10-24.consensus.fa	.	0	0	0	29886	.	.
+Denmark_DCGC_616145_2022_OY824719_1_2022_11_24	Denmark_DCGC-616145_2022_OY824719.1_2022-11-24.consensus.fa	.	0	0	0	29866	.	.
+USA_CA_CZB_27146_2021_MW921532_1_2021_02_05	USA_CA-CZB-27146_2021_MW921532.1_2021-02-05.consensus.fa	.	1	0	0	29864	14661	.

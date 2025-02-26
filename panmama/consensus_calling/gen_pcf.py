@@ -18,7 +18,7 @@ parser.add_argument('--bam', type=str, help='Path to the BAM file')
 parser.add_argument('--assignments', type=str, help='Path to reference assignments')
 parser.add_argument('--fasta', type=str, help='Path to the aligned FASTA file')
 parser.add_argument('--min_coverage', type=int, default=10, help='Minimum coverage to call a variant')
-parser.add_argument('--min_allele_depth', type=int, default=5, help='Minimum allele depth to call a variant')
+parser.add_argument('--min_allele_depth', type=str, default='5,0.02', help='Minimum allele raw depth and ratio to call a variant (the highest of the two is taken)')
 parser.add_argument('--min_coverage_per_ref_assignment_distribution', type=int, default=5, help='Minimum allele count to call a variant per reference assignment distribution')
 parser.add_argument('--min_allele_depth_per_ref_assignment_distribution', type=int, default=2, help='Minimum allele depth to call a variant per reference assignment distribution')
 parser.add_argument('--error_rate', type=float, default=0.05, help='Sequencing error rate')
@@ -88,27 +88,50 @@ for vcf_line in utils.open_file(allvar_vcf_path):
   query_names = defaultdict(list)
   sam_lines_at_pos = utils.get_sam_lines_at_pos(bam_file_path, haplotype, pos)
   for sam_line in sam_lines_at_pos:
-    qname, template_info, base, mapq, pass_filter = utils.process_sam_line(sam_line, pos, indel, alleles)
+    qname, template_info, base, mapq, pass_filter, num_matches = utils.process_sam_line(sam_line, pos, indel, alleles)
     if base not in alleles or qname is None: continue
-    query_names[qname].append((base, mapq, template_info, pass_filter))
+    if base == ref_allele: num_matches -= 1
+
+    query_names[qname].append((base, mapq, template_info, pass_filter, num_matches))
 
   # Group reads by the numebr of haplotypes they assign to and how different they are from the target haplotype
   ref_assignment_distributions = utils.group_reads_by_haplotype_assignment(query_names, haplotype_to_binary, haplotype, haplotype_abundance, reference_assignments)
 
-  # if pos in [11565, 20562, 22658, 799, 2415, 28951, 27723]:
-  #   print(vcf_line)
-  #   print('ref_assignment_distributions')
-  #   for max_score_diff in ref_assignment_distributions:
-  #     print(f'max_score_diff: {max_score_diff}')
-  #     for haplotypes_binary, ref_assignment_distribution in ref_assignment_distributions[max_score_diff].items():
-  #       print(f"{haplotypes_binary:0{len(haplotype_to_binary)}b}", 
-  #         dict(ref_assignment_distribution.alleles_count),
-  #         dict(ref_assignment_distribution.unpassed_alleles_count),
-  #         dict(ref_assignment_distribution.all_alleles_count), sep='\t', end='')
-  #       print()
-  #     print()
+  all_matches_by_allele = defaultdict(lambda: defaultdict(int))
 
-  target_candidate_alleles = utils.select_alleles(haplotype, haplotype_abundance, ref_assignment_distributions, haplotype_to_binary, error_rate, possible_alleles, int(args.min_coverage_per_ref_assignment_distribution), int(args.min_allele_depth_per_ref_assignment_distribution), indel)
+  for max_score_diff in ref_assignment_distributions:
+    for haplotypes_binary, ref_assignment_distribution in ref_assignment_distributions[max_score_diff].items():
+      for allele in ref_assignment_distribution.alleles_num_matches:
+        for diff, count in ref_assignment_distribution.alleles_num_matches[allele].items():
+          all_matches_by_allele[allele][diff] += count
+        for diff, count in ref_assignment_distribution.unpassed_alleles_num_matches[allele].items():
+          all_matches_by_allele[allele][diff] += count
+  
+  debug_line = False
+  if pos in set([]):
+    debug_line = True
+    print(vcf_line)
+    print('ref_assignment_distributions')
+    for max_score_diff in ref_assignment_distributions:
+      print(f'max_score_diff: {max_score_diff}')
+      for haplotypes_binary, ref_assignment_distribution in ref_assignment_distributions[max_score_diff].items():
+        print(f"{haplotypes_binary:0{len(haplotype_to_binary)}b}", 
+          dict(ref_assignment_distribution.alleles_count),
+          dict(ref_assignment_distribution.unpassed_alleles_count),
+          dict(ref_assignment_distribution.all_alleles_count), 
+          sep='\t')
+        for allele in ref_assignment_distribution.alleles_num_matches:
+          print('\t', allele, dict(sorted(ref_assignment_distribution.alleles_num_matches[allele].items(), reverse=True)), dict(sorted(ref_assignment_distribution.unpassed_alleles_num_matches[allele].items(), reverse=True)), sep='\t')
+        print()
+
+      print()
+    
+    for allele in all_matches_by_allele:
+      print('\t', allele, dict(sorted(all_matches_by_allele[allele].items(), reverse=True)), sep='\t')
+    print()
+
+  target_candidate_alleles = utils.select_alleles(haplotype, haplotype_abundance, ref_assignment_distributions, all_matches_by_allele, haplotype_to_binary, error_rate, possible_alleles, int(args.min_coverage_per_ref_assignment_distribution), int(args.min_allele_depth_per_ref_assignment_distribution), indel, debug_line)
+
 
 
   if len(target_candidate_alleles) > 1 or (len(target_candidate_alleles) == 1 and list(target_candidate_alleles)[0] != ref_allele):

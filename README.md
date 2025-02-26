@@ -290,3 +290,52 @@ I fixed several issues in the consensus calling step.
 3. Still need to implement the 2nd round of ambiguity resolution.
 
 4. Need to implement a way to handle indels.
+
+## 2/19/2025
+
+### To-do
+
+- [ ] Finalize panMAMA consensus calling
+
+### panMAMA
+
+For the past few days, I've been improving panMAMA consensus calling. I think I've improved it enough to start finalizing the method.
+
+Some of the trivial things to finish are:
+
+- implement indel handling
+
+- Add a likelihood ratio test for cases where more than one haplotype could possibly have the cryptic mutation
+
+- Perhaps output a file that lists all possible variants and their likelihoods in different haplotypes
+
+  Columns:
+  
+  1. #Type (cryptic, non-cryptic)
+  2. REF
+  3. ALT
+  4. INFO (in the format Chrom:Pos:LikelihoodRatio)
+
+
+~~I think I will also plot a PR curve for the consensus calling.~~ nvm I tried and it looked ugly.
+
+## 2/26/2025
+
+### To-do
+
+- [ ] Finalize panMAMA consensus calling (see notes on [2/19/2025](#2192025))
+
+- [ ] Optimize panMAMA runtime
+
+- [ ] Evaluate panMAMA using real data
+
+### panMAMA
+
+I'm going to do some final optimization of panMAMA runtime. This will be done on silverbullet for efficiency.
+
+Keeping the command and options here so I don't have to re-write them.
+
+```
+panmap example.panman example_R1.fastq example_R2.fastq --place-per-read --redo-read-threshold 0 --em-filter-round 2 --remove-threshold 0.01 --rounds-remove 5 --preem-filter-method mbc --save-kminmer-binary-coverage
+```
+

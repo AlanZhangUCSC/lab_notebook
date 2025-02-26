@@ -1,0 +1,3 @@
+true_haplotype	consensus	closest_true	snp_dist	gap_edge_corrected_dist
+KU950511_1	KU950511.1.consensus.fa	.	0	0	0	15234	.	.
+.	KX765925.1.consensus.fa	KU950511_1	3	0	10	15234	5541,5570,5575	0,1,2,3,4,5,6,7,8,9

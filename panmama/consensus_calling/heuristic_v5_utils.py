@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import gzip
 import math
@@ -91,23 +92,23 @@ def assess_possible_alt(ref_depth, alt_depths, ref_allele, alt_alleles, haplotyp
   all_depth = ref_depth + sum(alt_depths)
   possible_alt = False
   possible_alleles = set()
-
-  if ref_depth >= min_allele_depth:
-    if ref_depth >= all_depth * max(haplotype_abundance - 0.05, 0.01):
+  min_allele_depth, min_allele_ratio = map(float, min_allele_depth.split(','))
+  if ref_depth >= max(min_allele_depth, min_allele_ratio * all_depth):
+    if ref_depth >= all_depth * max(haplotype_abundance - 0.1, 0):
       possible_alleles.add(ref_allele)
     elif ref_depth > 0:
-      g_stat, pvalue = g_test(ref_depth / all_depth, max(haplotype_abundance - 0.05, 0.01), all_depth)
+      g_stat, pvalue = g_test(ref_depth / all_depth, max(haplotype_abundance - 0.1, 0), all_depth)
       if pvalue >= 0.05:
         possible_alleles.add(ref_allele)
 
 
   for alt_allele, alt_depth in zip(alt_alleles, alt_depths):
-    if alt_depth >= min_allele_depth:
-      if alt_depth >= all_depth * max(haplotype_abundance - 0.05, 0.01):
+    if alt_depth >= max(min_allele_depth, min_allele_ratio * all_depth):
+      if alt_depth >= all_depth * max(haplotype_abundance - 0.1, 0):
         possible_alt = True
         possible_alleles.add(alt_allele)
       elif alt_depth > 0:
-        g_stat, pvalue = g_test(alt_depth / all_depth, max(haplotype_abundance - 0.05, 0.01), all_depth)
+        g_stat, pvalue = g_test(alt_depth / all_depth, max(haplotype_abundance - 0.1, 0), all_depth)
         if pvalue >= 0.05:
           possible_alt = True
           possible_alleles.add(alt_allele)
@@ -155,6 +156,10 @@ def get_ref_to_read_pos(cigar, ref_pos, start_pos):
     return None  # Position not found in read
 
 
+def parse_md_string(md_string):
+  md_string = md_string.strip()[5:]
+  matches = list(map(int, re.findall(r'\d+', md_string)))
+  return sum(matches)
 
 def process_sam_line(line, target_position, indel, alleles):
   # Split the line into fields
@@ -167,16 +172,17 @@ def process_sam_line(line, target_position, indel, alleles):
   mapq = int(fields[4])
   cigar = fields[5]
   seq = fields[9]
+  md = fields[-1]
   pass_filter = True
 
   if cigar == '*':
-    return None, None, None, None, None
+    return None, None, None, None, None, None
 
   if not (flag & 0x2):
     pass_filter = False
   
   if flag & 0x100:
-    return None, None, None, None, None
+    return None, None, None, None, None, None
 
   
   # Parse CIGAR string
@@ -187,14 +193,16 @@ def process_sam_line(line, target_position, indel, alleles):
   
   # Skip if position not found in read
   if read_pos is None or read_pos <= 0 or read_pos > len(seq):
-      return None, None, None, None, None
+      return None, None, None, None, None, None
+
+  num_matches = parse_md_string(md)
   
   # Extract the base at the given position
   base = None
   if not indel:
     base = seq[read_pos - 1]  # Convert to 0-based for Python string indexing
     if base not in alleles:
-      return None, None, None, None, None
+      return None, None, None, None, None, None
   else:
     ref = alleles[0]
     indels = {}
@@ -217,7 +225,7 @@ def process_sam_line(line, target_position, indel, alleles):
 
   template_info = 0 if flag & 0x40 else 1  # Check first/second in pair flag
   assert not (flag & 0x40 and flag & 0x80), "Read cannot be both first and second in pair"
-  return qname, template_info, base, mapq, pass_filter
+  return qname, template_info, base, mapq, pass_filter, num_matches
 
 class assigned_reference:
   def __init__(self, binary_code, score):
@@ -238,23 +246,29 @@ class ref_assignment_distribution:
 
     self.alleles_count = defaultdict(int)
     self.alleles_mapq = defaultdict(list)
+    self.alleles_num_matches = defaultdict(lambda: defaultdict(int))
 
     self.unpassed_alleles_count = defaultdict(int)
     self.unpassed_alleles_mapq = defaultdict(list)
+    self.unpassed_alleles_num_matches = defaultdict(lambda: defaultdict(int))
 
     self.all_alleles_count = defaultdict(int)
 
     self.candidate_allele = ''
   
-  def add_allele(self, base, passed_filter, mapq=None):
+  def add_allele(self, base, passed_filter, num_matches=None, mapq=None):
     if passed_filter:
       self.alleles_count[base] += 1
       if mapq is not None:
         self.alleles_mapq[base].append(mapq)
+      if num_matches is not None:
+        self.alleles_num_matches[base][num_matches] += 1
     else:
       self.unpassed_alleles_count[base] += 1
       if mapq is not None:
         self.unpassed_alleles_mapq[base].append(mapq)
+      if num_matches is not None:
+        self.unpassed_alleles_num_matches[base][num_matches] += 1
     self.all_alleles_count[base] += 1
 
   def get_total_allele_count(self):
@@ -284,7 +298,7 @@ class ref_assignment_distribution:
     return sorted(self.all_alleles_count.keys(), key=lambda x: self.all_alleles_count[x], reverse=True)
   
 
-def update_ref_assignment_distribution(haplotype, paired_qname, base, pass_filter, mapq, haplotype_abundance, reference_assignments, ref_assignment_distributions, haplotype_to_binary):
+def update_ref_assignment_distribution(haplotype, paired_qname, base, pass_filter, mapq, num_matches, haplotype_abundance, reference_assignments, ref_assignment_distributions, haplotype_to_binary):
   haplotypes_binary = 0
   target_score = -1
   highest_score = -1
@@ -303,7 +317,7 @@ def update_ref_assignment_distribution(haplotype, paired_qname, base, pass_filte
     ref_assignment_distributions[max_score_diff] = {}
   if haplotypes_binary not in ref_assignment_distributions[max_score_diff]:
     ref_assignment_distributions[max_score_diff][haplotypes_binary] = ref_assignment_distribution(haplotypes_binary, max_score_diff)
-  ref_assignment_distributions[max_score_diff][haplotypes_binary].add_allele(base, pass_filter, mapq)
+  ref_assignment_distributions[max_score_diff][haplotypes_binary].add_allele(base, pass_filter, num_matches, mapq)
 
 def group_reads_by_haplotype_assignment(query_names, haplotype_to_binary, haplotype, haplotype_abundance, reference_assignments):
   ref_assignment_distributions = {}
@@ -312,9 +326,9 @@ def group_reads_by_haplotype_assignment(query_names, haplotype_to_binary, haplot
     if len(qinfo) == 2:
       if (qinfo[0][0] != qinfo[1][0]):
         continue
-    for base, mapq, template_info, pass_filter in qinfo:
+    for base, mapq, template_info, pass_filter, num_matches in qinfo:
       paired_qname = qname + '/1' if template_info == 0 else qname + '/2'
-      update_ref_assignment_distribution(haplotype, paired_qname, base, pass_filter, mapq, haplotype_abundance, reference_assignments, ref_assignment_distributions, haplotype_to_binary)
+      update_ref_assignment_distribution(haplotype, paired_qname, base, pass_filter, mapq, num_matches, haplotype_abundance, reference_assignments, ref_assignment_distributions, haplotype_to_binary)
   
   # Sort ref assigment distributions by how close they are to the target haplotype
   ref_assignment_distributions = dict(sorted(ref_assignment_distributions.items(), key=lambda x: x[0]))
@@ -441,7 +455,7 @@ def get_full_alignment_scores(target_position, sam_lines_at_pos, ref_seqs, refer
     alignment_scores_by_allele[allele] = dict(sorted(alignment_scores_by_allele[allele].items(), key=lambda x: x[0]))
   return alignment_scores_by_allele
 
-def select_alleles(haplotype, haplotype_abundance, ref_assignment_distributions, haplotype_to_binary, error_rate, possible_alleles, min_coverage_per_ref_assignment_distribution, min_allele_depth_per_ref_assignment_distribution, indel):
+def select_alleles(haplotype, haplotype_abundance, ref_assignment_distributions, all_matches_by_allele, haplotype_to_binary, error_rate, possible_alleles, min_coverage_per_ref_assignment_distribution, min_allele_depth_per_ref_assignment_distribution, indel, debug_line=False):
   target_haplotype_abundance = haplotype_abundance[haplotype]
   target_haplotype_binary = haplotype_to_binary[haplotype]
   candidate_alleles = set()
@@ -451,9 +465,30 @@ def select_alleles(haplotype, haplotype_abundance, ref_assignment_distributions,
     assert bin(target_haplotype_binary).count('1') == 1, "Target haplotype binary is not a single haplotype"
     cur_assignment_distribution = cur_score_distribution[target_haplotype_binary]
     alleles = cur_assignment_distribution.get_all_alleles()
-    if (len(alleles) == 1 or (len(alleles) > 1 and cur_assignment_distribution.all_alleles_count[alleles[0]] > cur_assignment_distribution.all_alleles_count[alleles[1]])) and alleles[0] in possible_alleles and cur_assignment_distribution.all_alleles_count[alleles[0]] >= min_allele_depth_per_ref_assignment_distribution:
-      candidate_alleles.add(alleles[0])
-      return candidate_alleles
+    if (alleles[0] in possible_alleles and cur_assignment_distribution.all_alleles_count[alleles[0]] >= min_allele_depth_per_ref_assignment_distribution):
+      if len(alleles) == 1:
+        candidate_alleles.add(alleles[0])
+        return candidate_alleles
+      elif len(alleles) > 1:
+        # if (cur_assignment_distribution.alleles_count[alleles[0]] > cur_assignment_distribution.alleles_count[alleles[1]]):
+        #   candidate_alleles.add(alleles[0])
+        #   return candidate_alleles
+        max_score_1 = max(all_matches_by_allele[alleles[0]].keys())
+        try:
+          max_score_2 = max(all_matches_by_allele[alleles[1]].keys())
+        except:
+          max_score_2 = 0
+        tolerance = 2
+        if max_score_1 > max_score_2 + tolerance:
+          candidate_alleles.add(alleles[0])
+          return candidate_alleles
+        elif max_score_2 > max_score_1 + tolerance:
+          candidate_alleles.add(alleles[1])
+          return candidate_alleles
+        else:
+          if (cur_assignment_distribution.all_alleles_count[alleles[0]] > cur_assignment_distribution.all_alleles_count[alleles[1]]): 
+            candidate_alleles.add(alleles[0])
+            return candidate_alleles
 
   for haplotypes_set_binary, cur_ref_assignment_distribution in ref_assignment_distributions[min_max_score_diff].items():
     sorted_pairs = sorted(haplotype_abundance.items(), key=lambda x: x[1])
@@ -464,27 +499,55 @@ def select_alleles(haplotype, haplotype_abundance, ref_assignment_distributions,
     for i in range(len(sorted_haplotypes)):
       if haplotypes_set_binary & (1 << i):
         sum_haplotype_abundance += sorted_abundances[i]
-    relative_target_haplotype_abundance = target_haplotype_abundance / sum_haplotype_abundance
+    relative_target_haplotype_abundance = max(target_haplotype_abundance - 0.1, 0) / sum_haplotype_abundance
 
     num_haplotypes_assigned = bin(haplotypes_set_binary).count('1')
-    sorted_alleles = sorted(cur_ref_assignment_distribution.all_alleles_count.items(), key=lambda x: x[1], reverse=True)
+    sorted_alleles = sorted(cur_ref_assignment_distribution.alleles_count.items(), key=lambda x: x[1], reverse=True)
     sorted_alleles = sorted_alleles[:min(num_haplotypes_assigned, len(sorted_alleles))]
 
 
-    cur_total_allele_count = cur_ref_assignment_distribution.get_all_total_count()
+    cur_total_allele_count = cur_ref_assignment_distribution.get_passed_total_count()
 
     # depth too low to consider alleles
-    if cur_total_allele_count < 1 / relative_target_haplotype_abundance or cur_total_allele_count < min_coverage_per_ref_assignment_distribution: continue
-
+    if cur_total_allele_count < min_coverage_per_ref_assignment_distribution: continue
+    cur_candidate_alleles = set()
+    if debug_line:
+      print(f"{haplotypes_set_binary:0{len(haplotype_to_binary)}b}")
     for allele, count in sorted_alleles:
+      if debug_line:
+        print(allele, count, sep='\t')
       if allele in possible_alleles:
-        if count < min_allele_depth_per_ref_assignment_distribution: continue
+        if count < min_allele_depth_per_ref_assignment_distribution:
+          if debug_line:
+            print(f'skipping {allele} because count < min_allele_depth_per_ref_assignment_distribution: {count}')
+          continue
+        if debug_line:
+          print(f'count / cur_total_allele_count: {count / cur_total_allele_count}')
+          print(f'relative_target_haplotype_abundance * (1 - error_rate): {relative_target_haplotype_abundance * (1 - error_rate)}')
         if count / cur_total_allele_count >= relative_target_haplotype_abundance * (1 - error_rate):
-          candidate_alleles.add(allele)
+          if debug_line:
+            print(f'adding {allele} because count / cur_total_allele_count >= relative_target_haplotype_abundance * (1 - error_rate): {count / cur_total_allele_count} >= {relative_target_haplotype_abundance * (1 - error_rate)}')
+          cur_candidate_alleles.add(allele)
         else:
           g_stat, pvalue = g_test(count / cur_total_allele_count, relative_target_haplotype_abundance, cur_total_allele_count)
           if pvalue >= 0.05:
-            candidate_alleles.add(allele)
+            if debug_line:
+              print(f'adding {allele} because pvalue >= 0.05: {pvalue}')
+            cur_candidate_alleles.add(allele)
+          else:
+            if debug_line:
+              print(f'skipping {allele} because pvalue < 0.05: {pvalue}')
+    
+    if not cur_candidate_alleles:
+      all_high_depth = True
+      for allele, count in sorted_alleles:
+        if count < min_allele_depth_per_ref_assignment_distribution:
+          all_high_depth = False
+          break
+      if all_high_depth:
+        cur_candidate_alleles = set(allele for allele, _ in sorted_alleles)
+    for allele in cur_candidate_alleles:
+      candidate_alleles.add(allele)
   
   if not candidate_alleles: candidate_alleles = possible_alleles
   return candidate_alleles
@@ -689,6 +752,7 @@ def cross_reference_alleles_2(pos, target_haplotype, position_info_by_haplotype,
     relative_target_haplotype_abundance = target_haplotype_abundance / sum_haplotype_abundance
 
     num_haplotypes_assigned = bin(haplotypes_set_binary).count('1')
+    if num_haplotypes_assigned == 1: continue
     sorted_alleles = sorted(cur_ref_assignment_distribution.alleles_count.items(), key=lambda x: x[1], reverse=True)
     sorted_alleles = sorted_alleles[:min(num_haplotypes_assigned, len(sorted_alleles))]
 
@@ -701,15 +765,43 @@ def cross_reference_alleles_2(pos, target_haplotype, position_info_by_haplotype,
     for allele, count in sorted_alleles:
       if allele in possible_alleles:
         if count < min_allele_depth_per_ref_assignment_distribution: continue
-        if count / cur_total_allele_count >= relative_target_haplotype_abundance * (1 - error_rate):
-          cur_candidate_alleles.add(allele)
-        else:
-          g_stat, pvalue = g_test(count / cur_total_allele_count, relative_target_haplotype_abundance, cur_total_allele_count)
-          if pvalue >= 0.05:
-            cur_candidate_alleles.add(allele)
+        cur_candidate_alleles.add(allele)
+        # if count / cur_total_allele_count >= relative_target_haplotype_abundance * (1 - error_rate):
+        #   cur_candidate_alleles.add(allele)
+        # else:
+        #   g_stat, pvalue = g_test(count / cur_total_allele_count, relative_target_haplotype_abundance, cur_total_allele_count)
+        #   if pvalue >= 0.05:
+        #     cur_candidate_alleles.add(allele)
 
     if len(cur_candidate_alleles) == 1:
       cross_referenced_alleles_by_ref_assignment_distribution[min_max_score_diff][haplotypes_set_binary].append([list(cur_candidate_alleles)[0], 0, 0])
+      if debug_line:
+        other_haplotypes_info = []
+        haplotypes = binary_set_to_haplotypes(haplotypes_set_binary, binary_to_haplotype)
+        alleles_list = []
+        for cur_haplotype in haplotypes:
+          if cur_haplotype == target_haplotype:
+            alleles_list.append(list(cur_candidate_alleles))
+          else:
+            cur_hap_ref_base, cur_hap_pos = position_info_by_haplotype[cur_haplotype][pos-1]
+            other_haplotypes_info.append([cur_haplotype, cur_hap_ref_base, cur_hap_pos])
+            cur_hap_pos += 1
+            if cur_hap_pos in pcf_info[cur_haplotype]:
+              alleles_list.append(pcf_info[cur_haplotype][cur_hap_pos].split('\t')[6].split(','))
+            else:
+              if cur_hap_ref_base in ('A', 'C', 'G', 'T'):
+                alleles_list.append([cur_hap_ref_base])
+              else:
+                alleles_list.append(list(possible_alleles))
+
+        if debug_line:
+          print()
+          print(f'haplotypes_set_binary: {haplotypes_set_binary:0{len(haplotype_to_binary)}b}')
+          for _haplotype, _alleles in zip(haplotypes, alleles_list):
+            print(_haplotype, _alleles)
+          for _haplotype, _ref_base, _pos in other_haplotypes_info:
+            print(_haplotype, _ref_base, _pos)
+          print()
     else:
       other_haplotypes_info = []
       haplotypes = binary_set_to_haplotypes(haplotypes_set_binary, binary_to_haplotype)
