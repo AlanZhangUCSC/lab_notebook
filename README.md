@@ -329,6 +329,12 @@ Some of the trivial things to finish are:
 
 - [ ] Evaluate panMAMA using real data
 
+- [ ] Implement homopolymer compressed syncmers
+
+- [ ] Implement sorted and merged syncmer/kminmer index if possible
+
+- [x] ~~**Make a figure of read assignments for Russ**~~ *See [panmama/illustrating_figures_andor_diagrams/](panmama/illustrating_figures_andor_diagrams/)*
+
 ### panMAMA
 
 I'm going to do some final optimization of panMAMA runtime. This will be done on silverbullet for efficiency.
@@ -339,3 +345,18 @@ Keeping the command and options here so I don't have to re-write them.
 panmap example.panman example_R1.fastq example_R2.fastq --place-per-read --redo-read-threshold 0 --em-filter-round 2 --remove-threshold 0.01 --rounds-remove 5 --preem-filter-method mbc --save-kminmer-binary-coverage
 ```
 
+After meeting with Richard Durbin, we got some good ideas to further improve accuracy and speed. We can compress homopolymers when sketching syncmers, and this could reduce syncmer errors due to homopolymer related sequencing errors. Additionally, we can implement a sorted and merged syncmer/kminmer index as direct hash lookup, while has a O(1) lookup time, is much slower than linear lookup of adjacent hash values.
+
+## 2/26/2025
+
+### To-do
+
+- [ ] Optimize panMAMA runtime (high priority)
+
+- [ ] Evaluate panMAMA using real data (high priority)
+
+- [ ] Finalize panMAMA consensus calling (see notes on [2/19/2025](#2192025)) (high priority)
+
+- [ ] Implement homopolymer compressed syncmers (low priority)
+
+- [ ] Implement sorted and merged syncmer/kminmer index if possible (low priority)
