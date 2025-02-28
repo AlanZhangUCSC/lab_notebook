@@ -360,3 +360,9 @@ After meeting with Richard Durbin, we got some good ideas to further improve acc
 - [ ] Implement homopolymer compressed syncmers (low priority)
 
 - [ ] Implement sorted and merged syncmer/kminmer index if possible (low priority)
+
+### panMAMA
+
+#### Optimize panMAMA runtime
+
+I'm going to graph the distribution of the types of kminmer changes. Specifically, the number of kminmer changes for a read and the type of kminmer changes (Whether the change had added a kminmer to the chain, removed a kminmer from the chain, or didn't change the chain). See [panmama/run_time_optimization/](panmama/run_time_optimization/) for details.
