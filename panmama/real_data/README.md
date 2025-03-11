@@ -126,6 +126,8 @@ See  `run_panmap_ivar_trim.sh` in [/scripts](/scripts) for the script I used to 
 
 For samples estimated to contain a mixture of both RSVA and RSVB, I wouldn't trust the estiimated proportions as I'm merging the reads from the two separate amplicon sequencing runs using different primers. They merely indicate that it's possible that the sample contains both RSVA and RSVB.
 
+It seems like `RSV00062` and `RSV00120` could contain a mixture of both RSVA and RSVB. `RSV00112`, `RSV00159`, and `RSV00147` are also estimated to contain a mixture but they have very low number of reads after trimming and QC.
+
 | RSV sample | RSV A | RSV B | Num reads after trimming|
 | --- | --- | --- | --- |
 | RSV00059 | 0.000 | 1.000 | 438946 |
