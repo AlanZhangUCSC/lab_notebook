@@ -124,6 +124,8 @@ Nevertheless, I will evaluate whether panMAMA can correctly identify whether the
 
 See  `run_panmap_ivar_trim.sh` in [/scripts](/scripts) for the script I used to do the things above.
 
+For samples estimated to contain a mixture of both RSVA and RSVB, I wouldn't trust the estiimated proportions as I'm merging the reads from the two separate amplicon sequencing runs using different primers. They merely indicate that it's possible that the sample contains both RSVA and RSVB.
+
 | RSV sample | RSV A | RSV B | Num reads after trimming|
 | --- | --- | --- | --- |
 | RSV00059 | 0.000 | 1.000 | 438946 |
