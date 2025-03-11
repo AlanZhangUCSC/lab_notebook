@@ -347,11 +347,13 @@ panmap example.panman example_R1.fastq example_R2.fastq --place-per-read --redo-
 
 After meeting with Richard Durbin, we got some good ideas to further improve accuracy and speed. We can compress homopolymers when sketching syncmers, and this could reduce syncmer errors due to homopolymer related sequencing errors. Additionally, we can implement a sorted and merged syncmer/kminmer index as direct hash lookup, while has a O(1) lookup time, is much slower than linear lookup of adjacent hash values.
 
-## 2/26/2025
+## 2/27/2025
 
 ### To-do
 
 - [ ] Optimize panMAMA runtime (high priority)
+
+- [ ] Modify panmap build and src files to read new panMANs (high priority)
 
 - [ ] Evaluate panMAMA using real data (high priority)
 
@@ -366,3 +368,48 @@ After meeting with Richard Durbin, we got some good ideas to further improve acc
 #### Optimize panMAMA runtime
 
 I'm going to graph the distribution of the types of kminmer changes. Specifically, the number of kminmer changes for a read and the type of kminmer changes (Whether the change had added a kminmer to the chain, removed a kminmer from the chain, or didn't change the chain). See [panmama/run_time_optimization/](panmama/run_time_optimization/) for details.
+
+## 2/28/2025
+
+### To-do
+
+- [ ] Optimize panMAMA runtime and memory usage (high priority)
+
+- [ ] Modify panmap build and src files to read new panMANs (high priority)
+
+- [ ] Evaluate panMAMA using real data (high priority)
+
+- [ ] Finalize panMAMA consensus calling (see notes on [2/19/2025](#2192025)) (high priority)
+
+- [ ] Implement homopolymer compressed syncmers (low priority)
+
+- [ ] Implement sorted and merged syncmer/kminmer index if possible (low priority)
+
+### panMAMA
+
+#### Optimize panMAMA runtime and memory usage
+
+I will install and test out a profiler (linaro map) today to see where panMAMA is spending most of its time. See [panmama/run_time_optimization/](panmama/run_time_optimization/) for more details.
+
+
+## 3/9/2025
+
+### To-do
+
+- [x] Optimize panMAMA runtime and memory usage (high priority)
+
+- [ ] Modify panmap build and src files to read new panMANs (high priority)
+
+- [ ] Evaluate panMAMA using real data (high priority)
+
+- [ ] Finalize panMAMA consensus calling (see notes on [2/19/2025](#2192025)) (high priority)
+
+- [ ] Implement homopolymer compressed syncmers (low priority)
+
+- [ ] Implement sorted and merged syncmer/kminmer index if possible (low priority)
+
+### panMAMA
+
+I think I've finished optimizing panMAMA runtime and memory usage for the time being. Now, panMAMA scores 1 million reads against 20,000-sample SARS tree in 5 minutes using 9GB of memory. EM step takes ~14 minutes.
+
+Now to evaluate panMAMA using real data. See [panmama/real_data/](panmama/real_data/) for details.
