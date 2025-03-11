@@ -122,7 +122,7 @@ I will actually use `ivar` to trim the primers. Following the pipeline that Marc
 
 Nevertheless, I will evaluate whether panMAMA can correctly identify whether the sample contains RSVA, RSVB, or a mixture of both. To do that, I accumulated the proportions of the strains estimated to be present to either RSVA or RSVB depending on which reference genome the haplotype is closer to.
 
-See  `run_panmap_ivar_trim.sh` in [/scripts](/scripts) for the script I used to do the things above.
+See  `run_panmap_ivar_trim.sh` in [scripts](scripts) for the script I used to do the things above.
 
 For samples estimated to contain a mixture of both RSVA and RSVB, I wouldn't trust the estiimated proportions as I'm merging the reads from the two separate amplicon sequencing runs using different primers. They merely indicate that it's possible that the sample contains both RSVA and RSVB.
 
