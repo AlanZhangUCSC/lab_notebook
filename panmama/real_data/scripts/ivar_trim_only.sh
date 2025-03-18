@@ -4,14 +4,14 @@
 #SBATCH --mail-user=bzhan146@ucsc.edu
 #SBATCH --mail-type=FAIL,END
 #SBATCH --nodes=1
-#SBATCH --mem=50gb
+#SBATCH --mem=10gb
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=20
 #SBATCH --output=/private/groups/corbettlab/alan/lab_notebook/panmama/real_data/logs/%x.%A.%a.%j.log
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/real_data/logs/%x.%A.%a.%j.err
-#SBATCH --partition=medium
-#SBATCH --time=02:00:00
-#SBATCH --array=0-191%30
+#SBATCH --partition=short
+#SBATCH --time=01:00:00
+#SBATCH --array=0-191%50
 
 set -x
 
@@ -43,6 +43,9 @@ trimmed_A_fastq=${rsv_dir}/A/pipeline_alignment_A.trimmed.fastq
 trimmed_B_fastq=${rsv_dir}/B/pipeline_alignment_B.trimmed.fastq
 trimmed_merged_fastq=${rsv_dir}/pipeline_alignment.trimmed.merged.fastq
 
+trimmed_A_fastq_length=${rsv_dir}/A/pipeline_alignment_A.trimmed.fastq.length
+trimmed_B_fastq_length=${rsv_dir}/B/pipeline_alignment_B.trimmed.fastq.length
+
 # align reads generated from each primer type to the respective reference
 bwa mem -t 8 ${RSV_A_ref_fasta} ${A_R1_file} ${A_R2_file} | samtools sort | samtools view -F 4 -o ${sorted_A_bam} &
 bwa mem -t 8 ${RSV_B_ref_fasta} ${B_R1_file} ${B_R2_file} | samtools sort | samtools view -F 4 -o ${sorted_B_bam} &
@@ -63,49 +66,9 @@ wait
 samtools fastq --threads 8 ${trimmed_A_bam} -o ${trimmed_A_fastq} &
 samtools fastq --threads 8 ${trimmed_B_bam} -o ${trimmed_B_fastq} &
 wait
-cat ${trimmed_A_fastq} ${trimmed_B_fastq} > ${trimmed_merged_fastq}
 
 
-# run panmap
-/private/groups/corbettlab/alan/panmap/build/bin/panmap \
-  ${panman_file} ${trimmed_merged_fastq} \
-  --place-per-read --redo-read-threshold 0 \
-  --em-filter-round 2 --remove-threshold 0.01 \
-  --rounds-remove 5 --preem-filter-method mbc \
-  --save-kminmer-binary-coverage --prefix ${rsv_dir}/trimmed_merged \
-  > ${rsv_dir}/trimmed_merged_panmap.log 2> ${rsv_dir}/trimmed_merged_panmap.err
 
-declare -A trimmed_merged_type_proportion=( ["A"]=0 ["B"]=0 )
 
-trimmed_merged_type_result=${rsv_dir}/trimmed_merged_type_result.txt
-rm ${trimmed_merged_type_result}
-while IFS= read -r line
-do
-  haplotype=$(echo -e "$line" | cut -f1 | cut -f1 -d ',')
-  proportion=$(echo -e "$line" | cut -f2 | cut -f1 -d ',')
 
-  haplotype_cleaned=$(echo $haplotype | tr '.' '_')
-  distance_to_A=$(bash /private/groups/corbettlab/alan/lab_notebook/panmama/real_data/scripts/calculate_errors_from_mafft.sh ${RSV_fasta_dir}/${haplotype_cleaned}.fasta ${RSV_A_ref_fasta} | head -n1 | cut -f1 -d ' ')
-  distance_to_B=$(bash /private/groups/corbettlab/alan/lab_notebook/panmama/real_data/scripts/calculate_errors_from_mafft.sh ${RSV_fasta_dir}/${haplotype_cleaned}.fasta ${RSV_B_ref_fasta} | head -n1 | cut -f1 -d ' ')
-  
-  if [ $distance_to_A -lt $distance_to_B ]; then
-    trimmed_merged_type_proportion['A']=$(echo "${trimmed_merged_type_proportion['A']} + $proportion" | bc)
-    echo -e "$line\tA" >> ${trimmed_merged_type_result}
-  else
-    trimmed_merged_type_proportion['B']=$(echo "${trimmed_merged_type_proportion['B']} + $proportion" | bc)
-    echo -e "$line\tB" >> ${trimmed_merged_type_result}
-  fi
-done < "${rsv_dir}/trimmed_merged.abundance"
 
-echo "A: ${trimmed_merged_type_proportion['A']}" >> ${trimmed_merged_type_result}
-echo "B: ${trimmed_merged_type_proportion['B']}" >> ${trimmed_merged_type_result}
-
-rm ${sorted_A_bam} \
-  ${sorted_B_bam} \
-  ${trimmed_A_bam} \
-  ${trimmed_B_bam} \
-  ${trimmed_A_bam}.bai \
-  ${trimmed_B_bam}.bai \
-  ${trimmed_A_fastq} \
-  ${trimmed_B_fastq} \
-  ${trimmed_merged_fastq}

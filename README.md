@@ -413,3 +413,28 @@ I will install and test out a profiler (linaro map) today to see where panMAMA i
 I think I've finished optimizing panMAMA runtime and memory usage for the time being. Now, panMAMA scores 1 million reads against 20,000-sample SARS tree in 5 minutes using 9GB of memory. EM step takes ~14 minutes.
 
 Now to evaluate panMAMA using real data. See [panmama/real_data/](panmama/real_data/) for details.
+
+## 3/18/2025
+
+### To-do
+
+- [ ] Evaluate panMAMA using real data (high priority)
+
+- [ ] Implement coverage filter for panMAMA (high priority)
+
+- [ ] Modify panmap build and src files to read new panMANs (high priority)
+
+### panMAMA
+
+I have been trying different ways to analyze the RSV data that Marc sent me. They are looking a little better now that I ran reads generated from RSVA priemrs and RSVB primers separately. Assuming Marc's assignment of mixture/isolated is correct, the false positives from panMAMA are because of low depth over all or high depth of likely contaminants at one or two loci. This is actually very useful information, as it's probably a good idea to consider coverage in the tool during demixing (set a filter to ignore haplotypes with coverage less than some threshold, [at least for amplicon samples]).
+
+See my [notes](https://docs.google.com/spreadsheets/d/14gnGfWoBKk4Jzjnv00v8XbslElWe5N_IhrAk8pv9s_k/edit?usp=sharing) for details.
+
+There are some cases I'm not sure when the samples would have 40-50% coverage with low depth in both RSV A and RSV B, I have these highlighted in bright yellow in the notes column. I also found two instances of "false negatives" where I had assigned them to be unmixed while you assigned them to be mixed:
+
+```
+RSV00174
+RSV00220
+```
+
+After manual inspection of these two samples on the IGV, I actually found them to be unmixed (their alignments on IGV look like the false positives where they have high depth at only one or two loci). They are also highlighted in bright yellow.
