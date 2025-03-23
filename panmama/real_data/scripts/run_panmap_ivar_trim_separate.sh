@@ -6,12 +6,12 @@
 #SBATCH --nodes=1
 #SBATCH --mem=50gb
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=2
 #SBATCH --output=/private/groups/corbettlab/alan/lab_notebook/panmama/real_data/logs/%x.%A.%a.%j.log
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/real_data/logs/%x.%A.%a.%j.err
 #SBATCH --partition=medium
 #SBATCH --time=02:00:00
-#SBATCH --array=0-384%30
+#SBATCH --array=0-383%30
 
 set -x
 
@@ -39,6 +39,11 @@ rsv_dir=${all_rsv_dirs[$SLURM_ARRAY_TASK_ID]}
 rsv_sample=${all_rsv_samples[$SLURM_ARRAY_TASK_ID]}
 rsv_type=${all_rsv_types[$SLURM_ARRAY_TASK_ID]}
 
+if [[ " 54 58 82 124 126 128 164 " =~ " $SLURM_ARRAY_TASK_ID " ]]; then
+  echo "Skipping SLURM_ARRAY_TASK_ID $SLURM_ARRAY_TASK_ID"
+  exit 0
+fi
+
 
 RSV_type_primer_bed_file=$data_dir/other_files_you_might_need/RSV${rsv_type}.primer.bed
 RSV_type_ref_fasta=""
@@ -62,17 +67,17 @@ trimmed_bam=${rsv_dir}/pipeline_alignment_${rsv_type}.trimmed.bam
 
 trimmed_fastq=${rsv_dir}/pipeline_alignment_${rsv_type}.trimmed.fastq
 
-# align reads generated from each primer type to the respective reference
-bwa mem -t 8 ${RSV_type_ref_fasta} ${R1_file} ${R2_file} | samtools sort | samtools view -h -F 4 -o ${sorted_bam}
+# # align reads generated from each primer type to the respective reference
+# bwa mem -t 8 ${RSV_type_ref_fasta} ${R1_file} ${R2_file} | samtools sort | samtools view -h -F 4 -o ${sorted_bam}
 
-# index bams
-samtools index --threads 8 ${sorted_bam}
+# # index bams
+# samtools index --threads 8 ${sorted_bam}
 
-# trim reads
-ivar trim -e -i ${sorted_bam} -b ${RSV_type_primer_bed_file} -p ${rsv_dir}/pipeline_alignment_${rsv_type}.trimmed 
+# # trim reads
+# ivar trim -e -i ${sorted_bam} -b ${RSV_type_primer_bed_file} -p ${rsv_dir}/pipeline_alignment_${rsv_type}.trimmed 
 
-# convert trimmed bams back to fastq and then merge
-samtools fastq --threads 8 ${trimmed_bam} -o ${trimmed_fastq}
+# # convert trimmed bams back to fastq and then merge
+# samtools fastq --threads 8 ${trimmed_bam} -o ${trimmed_fastq}
 
 
 # run panmap

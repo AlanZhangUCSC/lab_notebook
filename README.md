@@ -438,3 +438,35 @@ RSV00220
 ```
 
 After manual inspection of these two samples on the IGV, I actually found them to be unmixed (their alignments on IGV look like the false positives where they have high depth at only one or two loci). They are also highlighted in bright yellow.
+
+It seems like a good idea for me to also incorporate kminmer overlap into prefiltering the nodes before EM (at least for amplicon samples). Most of the false positives are also cases where contaminant read stacks map to one or two loci on one of the RSV types.
+
+Will stare at the google sheet for a while to see if I can find any other patterns.
+
+## 3/23/2025
+
+### To-do
+
+- [ ] Evaluate panMAMA using real data (high priority)
+
+- [ ] Implement coverage filter for panMAMA (high priority)
+
+- [ ] Modify panmap build and src files to read new panMANs (high priority)
+
+### panMAMA
+
+I discussed with Marc our reasonings for determining whether the RSV samples are mixed or unmixed. My logic is that if there are truly both RSVA and RSVB present in sample, then the reads generated from RSVA primers should map well to RSVA ref and cover most of the genome, and the reads generated from RSVB primers should map well to RSVB ref and cover most of the genome. On the other hand, samples where reads only map well to a few regions on the genome likely contain contaminants that get amplified in the PCR process. Marc, on the other hand, offers an alternative interpretation that we should believe what the data is telling us:
+
+>The target genomes in any of the samples (not just the mixed/co-infected ones) may not always be full-length (due to sample degradation over time(?)), and may not always be present in equimolar amounts (along the genome for one subtype). For me [Marc], I find it much harder to understand how RSVA or RSVB contaminants could be introduced in an essentially stochastic way among 192 samples all collected on different dates in a variety of locations and processed on different dates.  You might want to discuss these alternatives (and others) with Russ.
+
+I will discuss this with Russ.
+
+### panMANIA
+
+Thanks to Faith Okamoto's amazing rotation project, I have some really good preliminary data and code to work with. I copied over Faith's google docs to my google drive in case they some how disappear from the internet.
+
+I will generate some additional figures as preliminary data for my advancement.
+
+See [panmania/imputation/](panmania/imputation/) for details.
+
+

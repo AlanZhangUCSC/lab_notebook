@@ -6,12 +6,12 @@
 #SBATCH --nodes=1
 #SBATCH --mem=300gb
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=2
 #SBATCH --output=/private/groups/corbettlab/alan/lab_notebook/panmama/real_data/logs/%x.%A.%a.%j.log
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/real_data/logs/%x.%A.%a.%j.err
 #SBATCH --partition=medium
 #SBATCH --time=02:00:00
-#SBATCH --array=82,164
+#SBATCH --array=54,58,82,124,126,128,164,11,23,49,163,171
 
 
 set -x
