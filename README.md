@@ -451,6 +451,8 @@ Will stare at the google sheet for a while to see if I can find any other patter
 
 - [ ] Implement coverage filter for panMAMA (high priority)
 
+- [ ] Look over Faith's code and add more plots (high priority)
+
 - [ ] Modify panmap build and src files to read new panMANs (high priority)
 
 ### panMAMA
@@ -470,3 +472,26 @@ I will generate some additional figures as preliminary data for my advancement.
 See [panmania/imputation/](panmania/imputation/) for details.
 
 
+## 3/23/2025
+
+### To-do
+
+- [x] ~~Look over Faith's code and add more plots (high priority)~~ *See [panmania/imputation/](panmania/imputation/) for details*
+
+- [ ] Evaluate panMAMA using real data (high priority)
+
+- [ ] Implement coverage filter for panMAMA (high priority)
+
+- [ ] Modify panmap build and src files to read new panMANs (high priority)
+
+### panMANIA
+
+#### Imputation
+
+I've generated some additional plots for my advancement. See [panmania/imputation/](panmania/imputation/) for details. In a nutshell, I made 2 figures, 1 to show the prevalence of missing data in different panMANs in average number of Ns per genome, and 1 to show the distribution of the sizemissing data neighborhoods. Missing data neighorhoods are coordinates with missing data that occur in contiguous nodes.
+
+#### Annotation
+
+I will also begin exploring existing annotation tools to get a sense of how to start with panMAN annotation.
+
+See [panmania/annotation/](panmania/annotation/) for details.
