@@ -583,20 +583,23 @@ This offers ~6.58 bits per read (in best case scenario) as opposed to 64-bit per
 readIndex and 32-bit scoreDelta.
 
 Here is a table of estimated memory reduction under different threads using 1 million SARS reads and 20K-SARS tree. The
-old method, which uses 64 bits per read, will use ~11,678 Mb. I've also attached the time for **placement** for
+old method, which uses 64 bits per read, will use ~1,459 Mb. I've also attached the time for **placement** for
 additional information.
+
+*Note: 20K-SARS tree doesn't have any memory issues. I'm using it here to measure relatively how much memory will be*
+*reduce. The problem is the 8M-SARS tree. 8M-SARS tree currently is F'ed-up and being fixed by Sumit.*
 
 | Threads | Time (s) | Memory (Mb) | Fraction of original | Median Thread Time | Min Thread Time | Max Thread Time | (Max - Min) Thread Time | 
 | :------ | :------- | :---------- | :------------------- | :----------------- | :-------------- | :-------------- | :---------------------- |
-| 1 | 183 | 1695 | 0.145 | 1 | 1 | 1 | 0 |
-| 2 | 155 | 1689 | 0.145 | 155 | 132 | 155 | 22 | 
-| 4 | 77 | 1686 | 0.144 | 46 | 29 | 77 | 47 |
-| 8 | 89 | 1698 | 0.145 | 33 | 21 | 89 | 56 | 
-| 16 | 52 | 1693 | 0.145 | 16 | 13 | 52 | 39 | 
-| 32 | 65 | 1695 | 0.145 | 10 | 8 | 65 | 57 |
-| 64 | 39 | 1687 | 0.144 | 6 | 5 | 40 | 35 |
+| 1 | 183 | 211 | 0.145 | 1 | 1 | 1 | 0 |
+| 2 | 155 | 211 | 0.145 | 155 | 132 | 155 | 22 | 
+| 4 | 77 | 211 | 0.144 | 46 | 29 | 77 | 47 |
+| 8 | 89 | 212 | 0.145 | 33 | 21 | 89 | 56 | 
+| 16 | 52 | 212 | 0.145 | 16 | 13 | 52 | 39 | 
+| 32 | 65 | 212 | 0.145 | 10 | 8 | 65 | 57 |
+| 64 | 39 | 211 | 0.144 | 6 | 5 | 40 | 35 |
 
-It seems like we will get ~7x smaller memory from the read scores, which is not  bad. However, dividing up the reads
+It seems like we will get ~7x smaller memory from the read scores, which is not bad. However, dividing up the reads
 evenly after sorting has caused some unbalanced workload between the threads. Table below provides runtime information
 with shuffled reads for reference (the original version before sorting).
 
@@ -611,9 +614,10 @@ with shuffled reads for reference (the original version before sorting).
 
 The unbalanced workflow between threads increases the runtime too much for multiple threads. 7X reduced memory is good
 but might not be worth it in smaller trees, such as the SARS-20K, RSV-4K, and HIV-20K. After talking with Russ, we
-decide to implement a low-memory mode, which will be recommended to turn on for SARS-8M but not for the smaller trees.
+decided to implement a low-memory mode, which will be recommended to turn on for the 8M-SARS tree but not for the
+smaller trees.
 
-This has been implemented in commit: 
+Implementation in progress: `5368e898b7da68a3b7f1c358df2b484c1141fc8f`
 
 
 
