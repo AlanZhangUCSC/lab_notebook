@@ -579,7 +579,7 @@ locality during place and allows clever tricks to reduce the memory of score-ann
 
 Memory can be reduced by having a 32-bit startIndex, 16-bit scoreDelta, and 64-bit trailingScoresDelta that stores the
 differences in scoreDelta with respect to the 16-bit scoreDelta in the trailing 16 sorted reads, using 4 bits per reads.
-This offers ~6.58 bits per read (in best case scenario) as opposed to 64-bit per read I had  previously, with 32-bit
+This offers ~6.58 bits per read (in best case scenario) as opposed to 64-bit per read I had previously, with 32-bit
 readIndex and 32-bit scoreDelta.
 
 Here is a table of estimated memory reduction under different threads using 1 million SARS reads and 20K-SARS tree. The
@@ -591,15 +591,15 @@ additional information.
 
 | Threads | Time (s) | Memory (Mb) | Fraction of original | Median Thread Time | Min Thread Time | Max Thread Time | (Max - Min) Thread Time | 
 | :------ | :------- | :---------- | :------------------- | :----------------- | :-------------- | :-------------- | :---------------------- |
-| 1 | 183 | 211 | 0.145 | 1 | 1 | 1 | 0 |
-| 2 | 155 | 211 | 0.145 | 155 | 132 | 155 | 22 | 
-| 4 | 77 | 211 | 0.144 | 46 | 29 | 77 | 47 |
-| 8 | 89 | 212 | 0.145 | 33 | 21 | 89 | 56 | 
-| 16 | 52 | 212 | 0.145 | 16 | 13 | 52 | 39 | 
-| 32 | 65 | 212 | 0.145 | 10 | 8 | 65 | 57 |
-| 64 | 39 | 211 | 0.144 | 6 | 5 | 40 | 35 |
+| 1 | 183 | 241 | 0.164 | 1 | 1 | 1 | 0 |
+| 2 | 155 | 241 | 0.165 | 155 | 132 | 155 | 22 | 
+| 4 | 77 | 241 | 0.164 | 46 | 29 | 77 | 47 |
+| 8 | 89 | 242 | 0.165 | 33 | 21 | 89 | 56 | 
+| 16 | 52 | 242 | 0.165 | 16 | 13 | 52 | 39 | 
+| 32 | 65 | 242 | 0.165 | 10 | 8 | 65 | 57 |
+| 64 | 39 | 241 | 0.164 | 6 | 5 | 40 | 35 |
 
-It seems like we will get ~7x smaller memory from the read scores, which is not bad. However, dividing up the reads
+It seems like we will get ~6x smaller memory from the read scores, which is not bad. However, dividing up the reads
 evenly after sorting has caused some unbalanced workload between the threads. Table below provides runtime information
 with shuffled reads for reference (the original version before sorting).
 
@@ -619,7 +619,31 @@ smaller trees.
 
 Implementation in progress: `5368e898b7da68a3b7f1c358df2b484c1141fc8f`
 
+## 9/22/2025
 
+It's probably a good idea to also store the number of tailing deltas stored to avoid redundant operations when getting
+read scores for EM. I can also add a `uint16_t` in the struct without adding memory used because the 2 bytes of memory
+was part of the padding in the struct that will now be used for the new `uint64_t`.
 
+I didn't take into account the cases when there are reads without any updates in the trailing delta. Now trailing 
+scoreDeltas are within -7 to +7 to the first scoreDelta. That saves me one integer, -8, to represent skipped scoreDelta
+in a group.
+
+```c++
+struct readScoreDeltaLowMemory {
+  uint64_t trailingDelta = 0;
+  uint32_t readIndex;
+  uint16_t numTrailing = 0;
+  int16_t  scoreDelta;
+
+  void encodeTrailingDelta(int16_t scoreDeltaDiff, uint32_t indexToEncode);
+  int16_t decodeTrailingDelta(uint32_t offset);
+};
+```
+
+Now, to score 1 million SARS reads against the SARS-20K tree panMAMA uses ~~~241~~ ~250 Mb of memory, which is ~5.9
+times smaller than the original approach to score read scoreDeltas individually.
+
+This is implemented in commit: `928a7d15a53afcfa8296b38a554d3c457c0c4401`
 
 
