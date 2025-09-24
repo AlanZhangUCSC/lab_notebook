@@ -626,8 +626,9 @@ read scores for EM. I can also add a `uint16_t` in the struct without adding mem
 was part of the padding in the struct that will now be used for the new `uint64_t`.
 
 I didn't take into account the cases when there are reads without any updates in the trailing delta. Now trailing 
-scoreDeltas are within -7 to +7 to the first scoreDelta. That saves me one integer, -8, to represent skipped scoreDelta
-in a group.
+scoreDeltas are within -7 to +7 to the first scoreDelta (was -8 to +7 in the implementation from [yesterday](#9192025)).
+That saves me one integer, -8, to represent skipped scoreDelta in a group. This means the memory improve will be
+slightly less than the estimation from [9/19/2025](#9192025).
 
 ```c++
 struct readScoreDeltaLowMemory {
@@ -645,5 +646,24 @@ Now, to score 1 million SARS reads against the SARS-20K tree panMAMA uses ~~~241
 times smaller than the original approach to score read scoreDeltas individually.
 
 This is implemented in commit: `928a7d15a53afcfa8296b38a554d3c457c0c4401`
+
+## 9/23/2025
+
+Seems like Sumit has fixed the SARS-8M panMAN. I will take a look at it today.
+
+Hmmm... I got this error when trying to build the MGSR index for the new SARS-8M panMAN
+
+```
+stepping right over more than one block from 0 to -1
+```
+
+After many debug lines and long time of waiting, I found that I had a hidden bug that seemed to never cause a problem
+in RSV-4K, SARS-20K, HIV-20K, and the old SARS-8M.
+
+After fixing the bug, I rebuilt the RSV-4K and SARS-20K index and compared them to the old index before I fixed the bug.
+Indeed they are identical. Just to make sure, I will compare them to brute force again tomorrow.
+
+MGSR index finally built for the new SARS-8M tree. I will take a look at it
+tomorrow.
 
 
