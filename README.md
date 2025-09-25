@@ -31,7 +31,11 @@ python parse_newick_to_pairs.py data/hiv/hiv_panman.newick > data/hiv/hiv20000_p
 
 sbatch evaluate_alignments/evaluate_alignments_hiv.sh
 
-python evaluate_alignments/plot_alignment_diff.py evaluate_alignments/out/hiv20000_alignment_differences.tsv evaluate_alignments/data/hiv/hiv20000_pairs.tsv hiv evaluate_alignments/out/hiv20000_alignment_differences.png
+python evaluate_alignments/plot_alignment_diff.py \
+  evaluate_alignments/out/hiv20000_alignment_differences.tsv \
+  evaluate_alignments/data/hiv/hiv20000_pairs.tsv \
+  hiv \
+  evaluate_alignments/out/hiv20000_alignment_differences.png
 ```
 
 For results, see [panmania/evaluate_alignments](panmania/evaluate_alignments).
@@ -67,7 +71,9 @@ Run the docker container and mount the panman directory
 docker run -it -v .:/local_panman swalia14/panman:latest
 ```
 
-Edit the CMakeLists.txt by adding the following lines between `TARGET_LINK_LIBRARIES(...)` and `target_include_directories(...)`
+Edit the CMakeLists.txt by adding the following lines between `TARGET_LINK_LIBRARIES(...)` and
+`target_include_directories(...)`
+
 ```
 add_custom_command(TARGET panmanUtils POST_BUILD
     COMMAND mkdir -p ${CMAKE_BINARY_DIR}/lib
@@ -118,8 +124,8 @@ Will need to fix this before I can continue with the formalization.
 The panMAN gives `Exceeded message traversal limit` error for SARS and HIV trees. The reason is that the default message
 traversal limit is too small.
 
-To fix this, replace `uint64_t traversalLimitInWords = 8 * 1024 * 1024 * 128` in `/home/capnproto-c++-1.0.2/src/capnp/message.h`
-with `uint64_t traversalLimitInWords = 8 * 1024 * 1024 * 256`.
+To fix this, replace `uint64_t traversalLimitInWords = 8 * 1024 * 1024 * 128` in
+`/home/capnproto-c++-1.0.2/src/capnp/message.h` with `uint64_t traversalLimitInWords = 8 * 1024 * 1024 * 256`.
 
 Then run command below to rebuild capnproto.
 ```
@@ -145,7 +151,8 @@ files for nodes on the panMANs are currently taking too long for `SARS_20000` an
 To make the pseudo-chaining score vs sequence similarity figure (refer to `2/3/2025`), I'm going to write a script that
 would give all 150-bp kmers from a random node (preferably containing no ambiguous bases, `OM857280.1`) and generate 50
 mutated kmers from each kmer, each containg 1 - 50 mutations. Then I will calculate align them using minimap2 and
-pseudo-chaining and compare their scores. Scripts and data are placed in `/private/groups/corbettlab/alan/lab_notebook/panmama/pseudo_chaining-vs-sequence_similarity`.
+pseudo-chaining and compare their scores. Scripts and data are placed in
+`/private/groups/corbettlab/alan/lab_notebook/panmama/pseudo_chaining-vs-sequence_similarity`.
 
 The final figure is saved in `panmama/pseudo_chaining-vs-sequence_similarity/pseudo_chaining_vs_seq_similarity.png`. It
 doesn't look very good... A better to illustrate the effectiveness of pseudochaining is to show how it's able to discern
@@ -168,8 +175,8 @@ assuming there no back mutations. See notes below in panMAMA section.
 
 I just plotted the alignment differences for the new SARS and RSV panMANs (HIV is skipped because it's taking too long.
 Seems like the aligned sequences in the new HIV panMAN are very long). The new SARS panMAN looks pretty identical to the
-old SARs panMAN but **the new RSV panMAN looks **worse** than the old one**. See [panmania/evaluate_alignments](panmania/evaluate_alignments)
-for more details.
+old SARs panMAN but **the new RSV panMAN looks **worse** than the old one**. See
+[panmania/evaluate_alignments](panmania/evaluate_alignments) for more details.
 
 Maybe it is worth to also fix the alignments in panMAN for Aim 2.
 
@@ -198,13 +205,13 @@ Notes below need to be beautified and executed. This is a place holder so I don'
 ### To-do
 
 - [ ] Really do finish formalizing the method for calling consensus.
-- [x] ~~Finish writing the first draft of the specific aim section of my thesis proposal.~~ *See [thesis_proposal/](thesis_proposal/)*
-      *directory for the draft*
+- [x] ~~Finish writing the first draft of the specific aim section of my thesis proposal.~~
+      *See [thesis_proposal/](thesis_proposal/)directory for the draft*
 
 ### Logistics and general work
 
-I finished the first draft of my specific aims section for my thesis proposal. Aim 3 still needs a lot of work. See [thesis_proposal/](thesis_proposal/)
-section for the first draft.
+I finished the first draft of my specific aims section for my thesis proposal. Aim 3 still needs a lot of work. See
+[thesis_proposal/](thesis_proposal/) section for the first draft.
 
 ### panMANIA
 
@@ -265,7 +272,8 @@ for line in vcf_all:
 ### panMANIA
 
 
-I fininally finished quantifying the prevalence of problematic block states (see [panmania/evaluate_alignments/](panmania/evaluate_alignments/#quantify-the-prevalence-of-problematic-block-states)).
+I fininally finished quantifying the prevalence of problematic block states (see
+[panmania/evaluate_alignments/](panmania/evaluate_alignments/#quantify-the-prevalence-of-problematic-block-states)).
 It looks like it's definitely worth fixing the misaligned blocks or representing them differently (a different layer of
 block coordinate?). Will talk to Russ about it.
 
@@ -280,7 +288,8 @@ Fixing this should also substantially improve the runtime of `panmap` and `panMA
 
 ### panMAMA
 
-Today I will manually look through the output of consensus calling and characterize the errors. See [panmama/consensus_calling/](panmama/consensus_calling/)
+Today I will manually look through the output of consensus calling and characterize the errors. See
+[panmama/consensus_calling/](panmama/consensus_calling/)
 for detail.
 
 Idea: perhaps I can also calculate the average sequence similarity of the reference and reads supporting each allele. 
@@ -369,7 +378,8 @@ Some of the trivial things to finish are:
 
 - [ ] Implement sorted and merged syncmer/kminmer index if possible
 
-- [x] ~~**Make a figure of read assignments for Russ**~~ *See [panmama/illustrating_figures_andor_diagrams/](panmama/illustrating_figures_andor_diagrams/)*
+- [x] ~~**Make a figure of read assignments for Russ**~~ *See
+      [panmama/illustrating_figures_andor_diagrams/](panmama/illustrating_figures_andor_diagrams/)*
 
 ### panMAMA
 
@@ -378,7 +388,8 @@ I'm going to do some final optimization of panMAMA runtime. This will be done on
 Keeping the command and options here so I don't have to re-write them.
 
 ```
-panmap example.panman example_R1.fastq example_R2.fastq --place-per-read --redo-read-threshold 0 --em-filter-round 2 --remove-threshold 0.01 --rounds-remove 5 --preem-filter-method mbc --save-kminmer-binary-coverage
+panmap example.panman example_R1.fastq example_R2.fastq --place-per-read --redo-read-threshold 0 --em-filter-round 2 \
+  --remove-threshold 0.01 --rounds-remove 5 --preem-filter-method mbc --save-kminmer-binary-coverage
 ```
 
 After meeting with Richard Durbin, we got some good ideas to further improve accuracy and speed. We can compress
@@ -430,8 +441,8 @@ chain, or didn't change the chain). See [panmama/run_time_optimization/](panmama
 
 #### Optimize panMAMA runtime and memory usage
 
-I will install and test out a profiler (linaro map) today to see where panMAMA is spending most of its time. See [panmama/run_time_optimization/](panmama/run_time_optimization/)
-for more details.
+I will install and test out a profiler (linaro map) today to see where panMAMA is spending most of its time. See
+[panmama/run_time_optimization/](panmama/run_time_optimization/) for more details.
 
 
 ## 3/9/2025
@@ -657,13 +668,83 @@ Hmmm... I got this error when trying to build the MGSR index for the new SARS-8M
 stepping right over more than one block from 0 to -1
 ```
 
-After many debug lines and long time of waiting, I found that I had a hidden bug that seemed to never cause a problem
-in RSV-4K, SARS-20K, HIV-20K, and the old SARS-8M.
+After many debug lines and long time of waiting, I found that I had a hidden bug that seemed tohave never cause a
+problem in RSV-4K, SARS-20K, HIV-20K, and the old SARS-8M.
 
 After fixing the bug, I rebuilt the RSV-4K and SARS-20K index and compared them to the old index before I fixed the bug.
 Indeed they are identical. Just to make sure, I will compare them to brute force again tomorrow.
 
-MGSR index finally built for the new SARS-8M tree. I will take a look at it
-tomorrow.
+MGSR index finally built for the new SARS-8M tree. I will take a look at it tomorrow.
+
+## 9/24/2025
+
+Last night, I scored 100K reads against the SARS-8M tree using both the low-memory mode and the normal mode.
+
+Using 8 threads:
+
+Normal mode took 7352 secs (122.5 mins), using max res 220 Gbs
+
+Low-mem mode took 7115 secs (118.5 mins), using max res 81 Gbs
+
+There are 82,640 nodes with significant kminmer overlap coefficient (using the default settin to include the top 1000
+rank).
+
+Inside silverbullet:/scratch1/alan/goodmap/panmap/build, the commands used are:
+
+```
+./bin/panmap ../panmans/sars_8M.panman \
+  ../test_data/sars/rep1/sars20000_5hap-a_100000_rep1_R1.fastq \
+  ../test_data/sars/rep1 sars20000_5hap-a_100000_rep1_R2.fastq \
+  -m sars_8M.new.pmai --cpus 8
+```
+
+```
+./bin/panmap ../panmans/sars_8M.panman \
+  ../test_data/sars/rep1/sars20000_5hap-a_100000_rep1_R1.fastq \
+  ../test_data/sars/rep1 sars20000_5hap-a_100000_rep1_R2.fastq \
+  -m sars_8M.new.pmai --cpus 8 --low-memory
+```
+
+This doesn't look very good tbh... I scheduled a meeting on 9/29/2025 with Yatish, Russ, and Alex to go over potential
+strategies. I will make a slide deck to go over the panMAMA program step-by-step.
 
 
+### Meanwhile, I think I will explore possible ways to better subset probable nodes.
+
+Pranav's scoring function looks quite interesting. I already store the maximum parsimony score of each read, and it's
+trivial to also store the EPP (number of genomes that have the maximum parsimony with the read).
+
+For the sake of testing, I only scored the nodes that are already selected using the kminmer overlap coefficient method.
+Since the overlap coefficient method is quite sensitive, it will pick up a lot of nodes, and I want to see how well the
+node scores can filter out some of the noises. Similar to Pranav's scoring function, each read's score depends on its 
+maximum parsimony across the entire tree and how many nodes share the paximum parsimony score.
+
+Essentially the score for a specific read i is
+
+`Si = (Ri.kminmers.size() - Ri.maxScore + 1) * pow(Ri.epp, 2)`
+
+And the score for a specific node j is the sum of read scores of reads that maximally map to the node, or in pseudocode:
+
+```
+curNodeScores
+nodeScore = 0
+for (i = 0 ... len(reads)):
+  if (curNodeScores[i] == reads[i].maxScore && reads[i].maxScore > 0):
+      nodeScore += (reads[i].kminmers.size() - reads[i].maxScore + 1) * pow(reads[i].epp, 2)
+```
+
+I haven't implemented the regularization by fraction of sites covered but it already looks pretty good as it is.
+
+I made some minor changes in panmap (see commit `2ae3b7c85528b05b51b80955437e823218b50c28`) to output some stats on the
+node scores, and wrote a bash script
+[panmama/node_scores/run_panmap_for_test_node_scores.sh](panmama/node_scores/run_panmap_for_test_node_scores.sh)
+to run it on some sample data
+
+```bash
+reps=(rep1 rep2 rep3 rep4 rep5 rep6 rep7 rep8 rep9 rep10)
+for rep in "${reps[@]}"; do
+  bash run_panmap_for_test_node_scores.sh /scratch1/alan/goodmap/panmap/build/bin/panmap /scratch1/alan/goodmap/panmap/panmans/sars_20000_optimized.panman /scratch1/alan/goodmap/panmap/build/sars_20000.pmai /scratch1/alan/goodmap/panmap/test_data/sars/$rep/ &
+done
+```
+
+I will take a look at the results tomorrow.
