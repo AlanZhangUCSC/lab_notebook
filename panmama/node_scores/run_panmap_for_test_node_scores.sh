@@ -1,4 +1,4 @@
-# use panmap branch mgsr-development commit 2ae3b7c85528b05b51b80955437e823218b50c28
+# use panmap branch mgsr-development commit fff14e03f12b609f1877d845299862cb9b71b12d
 
 #!/bin/bash
 PANMAP_EXECUTABLE="$1"

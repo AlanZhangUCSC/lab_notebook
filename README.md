@@ -735,12 +735,14 @@ for (i = 0 ... len(reads)):
 
 I haven't implemented the regularization by fraction of sites covered but it already looks pretty good as it is.
 
-I made some minor changes in panmap (see commit `2ae3b7c85528b05b51b80955437e823218b50c28`) to output some stats on the
+I made some minor changes in panmap (see commit ~~`2ae3b7c85528b05b51b80955437e823218b50c28`~~
+~~`97aea060e789dafde7cdad4e855d0ea7e6f3c10a`~~ `fff14e03f12b609f1877d845299862cb9b71b12d`) to output some stats on the
 node scores, and wrote a bash script
 [panmama/node_scores/run_panmap_for_test_node_scores.sh](panmama/node_scores/run_panmap_for_test_node_scores.sh)
 to run it on some sample data
 
 ```bash
+# In termial
 reps=(rep1 rep2 rep3 rep4 rep5 rep6 rep7 rep8 rep9 rep10)
 for rep in "${reps[@]}"; do
   bash run_panmap_for_test_node_scores.sh /scratch1/alan/goodmap/panmap/build/bin/panmap /scratch1/alan/goodmap/panmap/panmans/sars_20000_optimized.panman /scratch1/alan/goodmap/panmap/build/sars_20000.pmai /scratch1/alan/goodmap/panmap/test_data/sars/$rep/ &
@@ -748,3 +750,206 @@ done
 ```
 
 I will take a look at the results tomorrow.
+
+### 9/25/2025
+
+The bash script seems to have run correctly, and the output files are all there.d
+
+I will write a script to ouptut and plot whether true haplotypes are selected by kminmer overlap coefficients and if
+they are, how their node scores rank within the selected nodes.
+
+Actually, I think I will rebuilt and rerun the panmap to output the node scores with more precision. Using commit
+~~`97aea060e789dafde7cdad4e855d0ea7e6f3c10a`~~ `fff14e03f12b609f1877d845299862cb9b71b12d`.
+
+Here is the script to output stats on true haplotypes kminmer overlap coefficients and node scores
+[panmama/node_scores/getRank.py](panmama/node_scores/getRank.py).
+
+To run it, for example
+
+```bash
+python3 getRank.py \
+  /scratch1/alan/goodmap/panmap/test_data/sars/panman_outputs/rep1/sars20000_5hap-a_abundance_rep1.tsv \
+  /scratch1/alan/goodmap/panmap/test_data/sars/rep1/sars20000_5hap-a_200000_rep1.testScores.txt \
+  <(sort -k3,3 -gr /scratch1/alan/goodmap/panmap/test_data/sars/rep1/sars20000_5hap-a_200000_rep1.testScores.txt)
+```
+
+The output (after piping it to `column -t`):
+
+```
+Denmark/DCGC-636002/2022|OY803981.1|2022-12-05                                      0.5   1.0     0  393  342.41096  0    1
+Germany/Molecular_surveillance_of_SARS-CoV-2_in_Germany/2021|OV351922.1|2021-09-17  0.2   1.0     0  393  13.38391   3    4
+Scotland/QEUH-3C94804/2022|OW532842.1|2022-03-27                                    0.15  1.0     0  393  47.15048   2    3
+USA/MA-CDCBI-CRSP_AP7MZ6THJQWE6Q7J/2023|OQ727617.1|2023-03-18                       0.1   1.0     0  393  121.36997  1    2
+England/OXON-AD71F/2020|OX589494.1|2020-04-04                                       0.05  0.9998  1  396  0.94889    359  578
+```
+
+I then wrote a script [panmama/node_scores/run_getRank.sh](panmama/node_scores/run_getRank.sh) to run `getRank.py` for my samples.
+
+```bash
+reps=(rep1 rep2 rep3 rep4 rep5 rep6 rep7 rep8 rep9 rep10)
+for rep in "${reps[@]}"; do
+  bash run_getRank.sh getRank.py /scratch1/alan/goodmap/panmap/test_data/sars/$rep/ /scratch1/alan/goodmap/panmap/test_data/sars/panman_outputs/$rep &
+done
+```
+
+I found that all of my samples with 80K reads actually contain different haplotypes from the true haplotypes? I probably
+forgot to delete them before re-simulation from a long time ago. Anyway, I just removed them.
+
+I think I will actually output kminmer overlap coefficient and node scores of all the nodes on the SARS-20K tree. Using
+commit `fff14e03f12b609f1877d845299862cb9b71b12d` instead.
+
+After manual inspection, it seems like Prana's node scoring scheme is pretty promising if I were to pre-select based on
+kminmer overlap coefficients. I do think it's worth it regularize the node scores using kminmer coverage, which I think
+will improve both sensitivity and specificity and might free us from pre-selection by kminmer overlap coefficients
+entirely
+
+Although, I found something weird... I was expecting that, at least for high coverage, in samples with only a single haplotype, 
+the correct haplotype should have the highest node score. However, for `rep10` of my samples, the correct haplotype does
+not have the highest node score.
+
+```
+==> sars20000_1hap-a_100000_rep10_rank_stats.tsv <==
+England/MILK-9A8502/2020|OA972423.1|2020-09-02  1.0  1.0  0  7  34.7493051276  2  3  2  3
+
+==> sars20000_1hap-a_10000_rep10_rank_stats.tsv <==
+England/MILK-9A8502/2020|OA972423.1|2020-09-02  1.0  1.0  0  1  3.1636666008  1  2  1  2
+
+==> sars20000_1hap-a_200000_rep10_rank_stats.tsv <==
+England/MILK-9A8502/2020|OA972423.1|2020-09-02  1.0  1.0  0  9  65.2952724646  3  4  3  4
+
+==> sars20000_1hap-a_20000_rep10_rank_stats.tsv <==
+England/MILK-9A8502/2020|OA972423.1|2020-09-02  1.0  1.0  0  1  5.9588101007  1  2  1  2
+
+==> sars20000_1hap-a_2000_rep10_rank_stats.tsv <==
+England/MILK-9A8502/2020|OA972423.1|2020-09-02  1.0  0.998377611  2  3  0.6550883658  38  39  1  2
+
+==> sars20000_1hap-a_40000_rep10_rank_stats.tsv <==
+England/MILK-9A8502/2020|OA972423.1|2020-09-02  1.0  1.0  0  1  12.4419547827  1  2  1  2
+```
+
+I might have made some sense if only one sample doesn't have the correct haplotype ranked highest, due to sheer luck 
+that a sequencing error caused a read or two to map better to the wrong node, but all the samples are like this.
+
+Running `for file in sars20000_1hap-a_*_rep10.testScores.txt; do  echo ">${file}"; sort -k 3,3 -gr $file | head -n 5; done`
+
+```
+>sars20000_1hap-a_100000_rep10.testScores.txt
+  England/CAMC-1172A52/2021|OD972409.1|2021-01-25 0.9943170286 35.2495987447
+  England/QEUH-9CFC6A/2020|OA994276.1|2020-09-15 0.9967539055 35.0967812923
+  England/MILK-9A8502/2020|OA972423.1|2020-09-02 1 34.7493051276
+  England/PHEC-14D2C4/2020|OX658315.1|2020-11-12 0.9939135727 34.7215691619
+  England/QEUH-B419FE/2020|OC996183.1|2020-11-08 0.9957412290 34.3945398909
+>sars20000_1hap-a_10000_rep10.testScores.txt
+  England/QEUH-9FFDAA/2020|OA998403.1|2020-09-30 0.9979716024 4.1104912017
+  England/MILK-9A8502/2020|OA972423.1|2020-09-02 1 3.1636666008
+  England/CAMC-1172A52/2021|OD972409.1|2021-01-25 0.9912725797 3.1612628447
+  England/PHEC-14D2C4/2020|OX658315.1|2020-11-12 0.9939135727 3.1610533713
+  England/QEUH-96E052/2020|OA967653.1|2020-08-18 0.9989858012 3.1107656447q
+>sars20000_1hap-a_200000_rep10.testScores.txt
+  England/CAMC-1172A52/2021|OD972409.1|2021-01-25 0.9943170286 66.2484996600
+  England/QEUH-9CFC6A/2020|OA994276.1|2020-09-15 0.9997971191 66.0141781118
+  England/PHEC-14D2C4/2020|OX658315.1|2020-11-12 0.9951308582 65.7404822238
+  England/MILK-9A8502/2020|OA972423.1|2020-09-02 1.0000000000 65.2952724646
+  England/QEUH-B419FE/2020|OC996183.1|2020-11-08 0.9959440276 65.1060260050
+>sars20000_1hap-a_20000_rep10.testScores.txt
+  England/QEUH-9CFC6A/2020|OA994276.1|2020-09-15 0.9975654291 6.8180396934
+  England/MILK-9A8502/2020|OA972423.1|2020-09-02 1 5.9588101007
+  England/CAMC-1172A52/2021|OD972409.1|2021-01-25 0.9912725797 5.9534744836
+  England/PHEC-14D2C4/2020|OX658315.1|2020-11-12 0.9939135727 5.9525848546
+  England/ALDP-B24FC2/2020|OB994572.1|2020-11-04 0.9983779400 5.9253104840
+>sars20000_1hap-a_2000_rep10.testScores.txt
+  USA/NV-CDC-QDX26257699/2021|OK250130.1|2021-06-27 0.9629254457 1.1328065150
+  England/MILK-B393BF/2020|OC996628.1|2020-11-01 0.9697400487 1.1200297175
+  SouthAfrica/NHLS-UCT-GS-D051/2021|OM765744.1|2021-07-08 0.9484094617 1.0110808329
+  Denmark/DCGC-641260/2023|OY797037.1|2023-02-01 0.9163256956 1.0102208789
+  Germany/IMS-10116-CVDP-DFD838F5-4D85-4B5B-AE67-0724E1E8F1FA/2021|OU078334.1|2021-02-03 0.9691495839 1.0089380969
+>sars20000_1hap-a_40000_rep10.testScores.txt
+  England/CAMC-1172A52/2021|OD972409.1|2021-01-25 0.9924903592 12.7652863894
+  England/MILK-9A8502/2020|OA972423.1|2020-09-02 1 12.4419547827
+  England/PHEC-14D2C4/2020|OX658315.1|2020-11-12 0.9939135727 12.4300685190
+  node_6130 0.9989860069 12.2138878733
+  England/OXON-F888DC/2020|OY954521.1|2020-10-06 0.9939418417 12.2138875445
+```
+
+I will use the 10K read sample to investigate the issue. `England/QEUH-9FFDAA/2020|OA998403.1|2020-09-30` has a much
+higher node score than `England/MILK-9A8502/2020|OA972423.1|2020-09-02`.
+
+I modified `panmap` to output some info on the read scores that contribute to each of the two haplotypes.
+
+I found that the read below, contributes 1.0 to `England/QEUH-9FFDAA/2020|OA998403.1|2020-09-30` but does not contribute
+to `England/MILK-9A8502/2020|OA972423.1|2020-09-02` at all. For simplicity, I will refer to 
+`England/QEUH-9FFDAA/2020|OA998403.1|2020-09-30` as `QEUH`, and `England/MILK-9A8502/2020|OA972423.1|2020-09-02` as
+`MILK`.
+
+```
+@England_MILK_9A8502_2020_OA972423_1_2020_09_02_181_7/2
+AGGGTTATGATTTTGGAAGCGCTCTGAAAAACAGCAAGAAGTGCAACGCCAACAATAAGCCATCCGAAAGGGAGTGAGGCTTGTATCGGTATCGTTGCAGTAGCGCGAACAAAATCTGAAGGAGTAGCATCGTTGATTTCACCTTGCTTCA
++
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF-FFFFFF-FFFFFFF8FFF-FF8FFFFFFFFFFFFFFFFF8FFFFFFFF-FFFFFFFFFF---FFFFFFFFFFFFFF-F-
+```
+
+I then used `minimap2` to align this read to both haplotypes.
+
+`minimap2 -a --MD sars_original/England_MILK_9A8502_2020_OA972423_1_2020_09_02.unaligned.fasta ../test_data/sars/exp.fastq`
+
+```
+England_MILK_9A8502_2020_OA972423_1_2020_09_02_181_7/2	16	England/MILK-9A8502/2020|OA972423.1|2020-09-02	25436	60	151M	*	0	0	TGAAGCAAGGTGAAATCAACGATGCTACTCCTTCAGATTTTGTTCGCGCTACTGCAACGATACCGATACAAGCCTCACTCCCTTTCGGATGGCTTATTGTTGGCGTTGCACTTCTTGCTGTTTTTCAGAGCGCTTCCAAAATCATAACCCT	-F-FFFFFFFFFFFFFF---FFFFFFFFFF-FFFFFFFF8FFFFFFFFFFFFFFFFF8FF-FFF8FFFFFFF-FFFFFF-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	NM:i:1	ms:i:296	AS:i:296	nn:i:0	tp:A:P	cm:i:24	s1:i:129	s2:i:0	de:f:0.0066	MD:Z:19G131	rl:i:0
+```
+
+`minimap2 -a --MD sars_original/England_QEUH_9FFDAA_2020_OA998403_1_2020_09_30.unaligned.fasta ../test_data/sars/exp.fastq`
+
+```
+England_MILK_9A8502_2020_OA972423_1_2020_09_02_181_7/2	16	England/QEUH-9FFDAA/2020|OA998403.1|2020-09-30	25436	60	151M	*	0	0	TGAAGCAAGGTGAAATCAACGATGCTACTCCTTCAGATTTTGTTCGCGCTACTGCAACGATACCGATACAAGCCTCACTCCCTTTCGGATGGCTTATTGTTGGCGTTGCACTTCTTGCTGTTTTTCAGAGCGCTTCCAAAATCATAACCCT	-F-FFFFFFFFFFFFFF---FFFFFFFFFF-FFFFFFFF8FFFFFFFFFFFFFFFFF8FF-FFF8FFFFFFF-FFFFFF-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	NM:i:0	ms:i:302	AS:i:302	nn:i:0	tp:A:P	cm:i:28	s1:i:150	s2:i:0	de:f:0	MD:Z:151	rl:i:0
+```
+
+It seems the sequencing error did cause `QEUH` to map better than `MILK`...
+
+Could it just be that the `MILK` genome is so close to its relatives that, more than usually, sequencing errors can
+cause reads to map better to other nodes. I will run `panmap` with `no-single` mode to remove reads with obvious
+sequencing errors. 
+
+Indeed, `MILK` is ranked first in node scores when `panmap` was run with `no-single` turned on. 
+
+
+```
+$ sort -k3,3 -gr panmap.testScores.txt | column -t
+  England/MILK-9A8502/2020|OA972423.1|2020-09-02   1             2.8943746447
+  England/CAMC-1172A52/2021|OD972409.1|2021-01-25  0.9912725797  2.8922007995
+  England/PHEC-14D2C4/2020|OX658315.1|2020-11-12   0.9939135727  2.8919996823
+  England/QEUH-96E052/2020|OA967653.1|2020-08-18   0.9989858012  2.8472196151
+  node_6123                                        0.9989768774  2.8472193844
+```
+
+I will also try with the 100K and 200K read samples.
+
+100K sample:
+
+```
+$ sort -k3,3 -gr panmap.testScores.txt | column -t
+  England/MILK-9A8502/2020|OA972423.1|2020-09-02   1             32.8271963293
+  England/CAMC-1172A52/2021|OD972409.1|2021-01-25  0.9912725797  32.8044433507
+  England/PHEC-14D2C4/2020|OX658315.1|2020-11-12   0.9939135727  32.8012638459
+  England/ALDP-A2E3AF/2020|OA991257.1|2020-10-05   0.9955348082  32.2821446972
+  England/QEUH-96E052/2020|OA967653.1|2020-08-18   0.9989858012  32.2653056183
+```
+
+200K sample:
+```
+$ sort -k3,3 -gr panmap.testScores.txt | column -t
+  England/CAMC-1172A52/2021|OD972409.1|2021-01-25  0.9924903592  62.8683882201
+  England/PHEC-14D2C4/2020|OX658315.1|2020-11-12   0.9943193346  62.6107755427
+  England/MILK-9A8502/2020|OA972423.1|2020-09-02   1             62.4128674700
+  England/QEUH-9CFC6A/2020|OA994276.1|2020-09-15   0.9963481436  62.1861284750
+  England/ALDP-A6E6AA/2020|OB982816.1|2020-10-15   0.9975659229  61.7590675371
+```
+
+It seems like 200K sample has a little bit more sequencing error because of its large size. I think I will actually also
+regularize the scores using coverage. I cannot use the existing kminmer overlap coefficient because a kminmer is
+considered covered as long it's in the read sample. To regularize, a kminmer should only be considered covered if it's
+present in a read that has maximum parsimony at that node. Hope that makes sense.....
+
+
+
+
+
+
