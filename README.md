@@ -2,6 +2,10 @@
 
 This notebook will track the progress of my work in the lab.
 
+## 2025
+
+[Jan](#1302025) &nbsp; [Feb](#212025) &nbsp; [Mar](#392025) &nbsp; [Sep](#9192025) &nbsp; [Oct](#1012025)
+
 ## 1/30/2025
 
 ### panMANIA
@@ -751,9 +755,9 @@ done
 
 I will take a look at the results tomorrow.
 
-### 9/25/2025
+## 9/25/2025
 
-The bash script seems to have run correctly, and the output files are all there.d
+The bash script seems to have run correctly, and the output files are all there.
 
 I will write a script to ouptut and plot whether true haplotypes are selected by kminmer overlap coefficients and if
 they are, how their node scores rank within the selected nodes.
@@ -910,7 +914,6 @@ sequencing errors.
 
 Indeed, `MILK` is ranked first in node scores when `panmap` was run with `no-single` turned on. 
 
-
 ```
 $ sort -k3,3 -gr panmap.testScores.txt | column -t
   England/MILK-9A8502/2020|OA972423.1|2020-09-02   1             2.8943746447
@@ -943,13 +946,89 @@ $ sort -k3,3 -gr panmap.testScores.txt | column -t
   England/ALDP-A6E6AA/2020|OB982816.1|2020-10-15   0.9975659229  61.7590675371
 ```
 
-It seems like 200K sample has a little bit more sequencing error because of its large size. I think I will actually also
-regularize the scores using coverage. I cannot use the existing kminmer overlap coefficient because a kminmer is
-considered covered as long it's in the read sample. To regularize, a kminmer should only be considered covered if it's
-present in a read that has maximum parsimony at that node. Hope that makes sense.....
+It seems like 200K sample has a little bit more sequencing error because of its large size. Nevertheless, it also seems 
+that all the top ranked node scores are `MILK`'s close relatives, as they are all sequenced from England with very close 
+dates to each other. I think I will actually also regularize the scores using coverage. I cannot use the existing 
+kminmer overlap coefficient because a kminmer is considered covered as long it's in the read sample. For the purose of 
+regularization, a kminmer should only be considered covered if it's present in a read that has maximum parsimony at that 
+node. Hope that makes sense.....
 
+## 9/26/2025
 
+Today I will come up with and develop a way to calculate the kminmer coverage. I will do a second light-weight tree
+traversal to dynamically calculate it.
 
+I will put the kminmer coverage function in `ThreadsManager` for now.
 
+## 9/29/2025
+
+I added a `computeKminmerCoverage()` function in `ThreadsManger` class. This function will only count a k-min-mer being
+covered at a node when it has at least one read that has a maximum score with the node. It's quite difficult to engineer
+a way to efficiently do this. Nevertheless, it seems like this coverage actually doesn't differ from the overlap
+coefficient too much. I think I will hold off this approach for now.
+
+For book-keeping purpose, `computeKminmerCoverage()` is implemented in commit:
+`2e18748a0f23ee7ec69b2630985c5a9458e78837`
+
+## 9/30/2025
+
+### Meeting with Yatish, Russ, and Alex was fruitful.
+
+Here are some keypoints from it:
+* PanMAMA's runtime is actually not bad and quite similar to WEPP
+* Yatish ~~suggested~~ mentioned the option of alternative scoring and deconvolution method.
+  * They tried both EM and Freyja and found that Freyja consistently performed better than EM.
+  * Alternative deconlution method might allow us to avoid chaining.
+* Can pre-filter the probable haplotypes (like the current overlap coeffcient method), then **condense the tree for only
+  the selected nodes**
+  * Still perform score update but on a much smaller scale.
+* Can group reads by their initial mapping position on the root (or even pseudo-root) node, then "build" smaller trees,
+each representing a contiguous small section of the genome on which the read group maps to.
+
+Russ and Yatish think that I'd be solid if I can improve my performance by 5-10X.
+
+I will first try to make a subtree that contains only nodes that have mutations relevent to my read sample. I created
+a new branch `mgsr-optimization` and will work from there.
+
+I need an efficient way to collapse the k-min-mer mutations if I want to collapse the nodes. To do
+this, I think I need the indexed seed insertions, deletions, and substitutions to be stored together instead of
+
+separately. I would also need to sort them by their positions. I will start with that.
+
+## 10/1/2025
+
+### Modifying structure of seed updates in panMAMA index
+
+I finally finished this update. Now I'm storing a single `seedDeltas<SeedDelta>` list per node in the index. Each
+`SeedDelta` contains the `seedIndex` and `isDeleted`. This list is sorted by the `startPos` of `seedInfos[seedIndex]`.
+This way, I know that if two consecutive `SeedDeltas` have the same `startPos`, they are substitutions. As before, this
+allows me to backtrack the reference kminmers using the same index...
+
+### I just realized that I also need an efficient way to collapse the gapMap changes...
+
+This is a bit trickier because my current implementation requires that my `coordDeltas` at node to be processed 
+sequentially as indexed. This means that I cannot just sort them to make the collapse easy. I might need to change how 
+gaps are represented or updated... 
+
+During building, a `gapRunUpdates` vector was processed to produce the `coordDeltas` vector. I didn't use
+`gapRunUpdates` directly for the index because I want to leave the messy computing in indexing so that I can just apply
+the `gapMap` changes according to `coordDeltas`. Unlike `coordDeltas`, `gapRunUpdates` doesn't need to be processed in a
+specific order. To be able to collapse the nodes, I might have to store `gapRunUpdates` in the index instead. I don't
+think the performance will be impacted more than trivially.
+
+## 10/2/2025
+
+### Switching from `coordDeltas` to `gapRunDeltas`
+
+I just implemented the new gapMap update, see [10/1/2025](#1012025). Everything seems to be working correctly.
+
+### Finally I can start working on collapsing the nodes.
+
+I implemented a `MgsrLiteTree` class and a `MgsrLiteNode` class for better organization of the panMAMA index data.
+
+Now `MgsrLiteTree` owns the `seedInfos` instead of `ThreadsManger` or `mgsrPlacer`. And `MgsrLiteNodes` own
+their respective indexed seed updates, including `seedDeltas`, `gapRunDeltas`, and `invertedBlocks`, in MgsrLiteTree.
+
+This will set up a better code structure for collaping the tree for optimization.
 
 
