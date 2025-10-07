@@ -1031,4 +1031,152 @@ their respective indexed seed updates, including `seedDeltas`, `gapRunDeltas`, a
 
 This will set up a better code structure for collaping the tree for optimization.
 
+## 10/3/2025
+
+### Also moved the ownership `scoreDeltas` from `threadsManager` and `mgsrPlace` to their respective nodes.
+
+Same as the changes made on [10/2/2025](#1022025), This will set up a better code structure for collaping the tree for
+optimization.
+
+### Investing how we can split the tree
+
+I tried splitting the tree by segment size of `[1000, 5000, 10000, 50000, 100000, 500000]`, and each tree segment is 
+collapsed to only include nodes that have at least one k-min-mer mutation in its range. I also give it either a `500` or 
+`0.1 * segmentSize` overlap offset so that we can include reads at the boundries of the segment when splitting the reads 
+to each segment. 
+
+#### SARS 4K
+
+```
+binSize  overlap  numTrees  totalNodes  avgTreeSize  medianTree  minTree  minTreeRange     maxTree  maxTreeRange
+1000     500      3446      658944      191          10          0        21500,22500      75       1157000,1158000
+1000     100      1915      364805      190          10          0        21600,22600      74       1152900,1153900
+5000     500      383       239527      625          123         134      886500,891500    401      1156500,1161500
+5000     500      383       239527      625          123         134      886500,891500    401      1156500,1161500
+10000    500      182       195632      1074         417         612      1064000,1074000  681      1149500,1159500
+10000    1000     192       204953      1067         408         636      1062000,1072000  698      1152000,1162000
+50000    500      35        121376      3467         1639        1761     990000,1040000   1944     1138500,1188500
+50000    5000     39        130549      3347         1543        21723    1710000,1760000  1930     1125000,1175000
+100000   500      18        96420       5356         2878        25280    1691500,1791500  2987     1094500,1194500
+100000   10000    20        105363      5268         3246        25542    1710000,1810000  3314     1080000,1180000
+500000   500      4         65668       16417        24597       27053    1498500,1998500  24597    999000,1499000
+500000   50000    4         65182       16295        21293       29192    1350000,1850000  21293    900000,1400000
+```
+
+#### SARS 8M
+
+```
+binSize  overlap  numTrees  totalNodes  avgTreeSize  medianTree  minTree  minTreeRange   maxTree  maxTreeRange
+1000     500      285       200645202   704018       647251      662308   75500,76500    118214   1500,2500
+1000     100      159       110509365   695027       644707      661926   75600,76600    110471   1800,2800
+5000     500      32        51089087    1596533      1541060     1355099  45000,50000    417769   0,5000
+5000     500      32        51089087    1596533      1541060     1355099  45000,50000    417769   0,5000
+10000    500      15        37001282    2466752      2279767     1522025  19000,29000    1099764  0,10000
+10000    1000     16        39027983    2439248      2417613     1353098  18000,28000    1090724  0,10000
+50000    500      3         17701937    5900645      6053592     6053592  49500,99500    7013652  99000,149000
+50000    5000     4         21570598    5392649      6053592     7219395  135000,185000  6053592  90000,140000
+100000   500      2         14357690    7178845      7354519     7354519  99500,199500   7003171  0,100000
+100000   10000    2         14718565    7359282      7364046     7354519  0,100000       7364046  90000,190000
+500000   500      1         8560783     8560783      8560783     8560783  0,500000       8560783  0,500000
+500000   50000    1         8560783     8560783      8560783     8560783  0,500000       8560783  0,500000
+```
+
+### Investigating where read kminmers can match to on the tree
+
+To roughly estimate this, I get all the global reference positions that each read's k-min-mers can map to, then 
+calcualte the read mapping range between the min and max its reference match positions. This measures how far apart on
+the reference a read can potentially map to. 
+
+From working directory, `/scratch1/alan/goodmap/panmap/build`, I used 
+`../test_data/sars/rep1/sars20000_5hap-a_100000_rep1_R*.fastq` as a test sample.
+
+#### SARS 20K
+
+![sars_20k_read_match_ranges](figures/read_match_positions_plot.png)
+
+#### SARS 8M
+
+![sars_8M_read_match_ranges](figures/8M_read_match_positions_plot.png)
+
+#### RSV 4K
+
+![rsv_4k_read_match_ranges](figures/rsv_read_match_positions_plot_plot.png)
+
+The results show that most of the reads have very close mapping range (which is what we want) on the SARS 20K tree.
+However, that doesn't seem like the case for the **SARS 8M** tree and RSV 4K tree.
+
+
+
+## 10/6/2025
+
+It seems like a non-trivial amount of reads would not map to a small segument of the SARS 8M tree, so grouping the reads
+by their mapping positions then splitting the tree would not work very well.
+
+Therefore, we might have to resolve to reducing the search space early. Today, I will write some scripts to run tests on
+how well k-min-mer overlap coefficient is able to pre-filter read samples of various compositions:
+
+<ol>
+  <li>Original and mutated haplotype
+    <ol>
+      <li>All original haplotypes</li>
+      <li>All mutated haplotypes</li>
+      <li>Mix of original and mutated haplotypes</li>
+    </ol>
+  </li>
+  <li>Sequencing type
+    <ol>
+      <li>shot-gun</li>
+      <li>tailed amplicon</li>
+    </ol>
+  </li>
+  <li>Sequencing depth</li>
+</ol>
+
+I will make all combinations of (`#SNPs`, `#Haplotypes`, `%Mutated`, `SeqType`, `Depth`)
+
+`#SNP: 0 1 5 10 20`
+
+`#haplotypes: 1 5 10 20 50 100`
+
+`%Mutated: 0% 20% 50% 70% 100%`
+
+`SeqType: shot-gun tiled-amplicon`
+
+`Depth: 10X 50X 100X 500X 1000X`
+
+### Output haplotypes and simulate SNPS
+
+Added `--dump-sequences` and `--simulate-snps` options to `panmap`. Just for the purpose of testing if correct nodes
+will be selected, SNPs are uniformally simulated, e.g. base A can mutate into C, G, and T with equal probabilities. 
+
+Added `--dump-random-nodeIDs` option to output a specified number of nodes. This is for selecting random haplotypes to simulate
+the mixed samples
+
+Added `--random-seed` option to specify the seed for the RNG. This is for replicating the results for future reference.
+
+This is implemented in commit `3dcb5d24494d02084d76c79375fe08ae8cd98306`
+
+I just finished writing a script, 
+[simulate_and_test_overlap_coefficient.sh](panmama/overlap_coefficients/simulate_and_test_overlap_coefficient.sh), to
+simulate reads with parameters described above. Currently, for `%Mutated`, I am only simulate either 0% or 100%. I will
+deal with mixed mutations tomorrow. See below for how to run the script... I pulled `#SNP` parameter out for simpler
+parallelization on `silverbullet`.
+
+```
+for num_snp in 0 1 5 10 20; do
+  bash simulate_and_test_overlap_coefficient.sh \
+    /scratch1/alan/goodmap/panmap/build/bin/panmap \
+    /scratch1/alan/goodmap/panmap/panmans/sars_20000_optimized.panman \
+    /scratch1/alan/goodmap/panmap/build/sars_20000.pmai \
+    /home/alan/tools/SWAMPy/src/simulate_metagenome.py \
+    /home/alan/tools/SWAMPy/primer_sets/nimagenV2.bed \
+    /home/alan/tools/SWAMPy/ref/MN908947.3.fasta \
+    /home/alan/tools/jvarkit/dist/jvarkit.jar \
+    /scratch1/alan/lab_notebook/panmama/overlap_coefficients/out \
+    $num_snp > /dev/null 2>&1 &
+done
+```
+
+This is currently running on `silverbullet`. I will take a look at the results tomorrow.
+
 
