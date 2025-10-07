@@ -1154,7 +1154,7 @@ the mixed samples
 
 Added `--random-seed` option to specify the seed for the RNG. This is for replicating the results for future reference.
 
-This is implemented in commit `3dcb5d24494d02084d76c79375fe08ae8cd98306`
+This is implemented in commit `b96f016a79afca83c8e8b45b86f339cd367062e3`
 
 I just finished writing a script, 
 [simulate_and_test_overlap_coefficient.sh](panmama/overlap_coefficients/simulate_and_test_overlap_coefficient.sh), to
