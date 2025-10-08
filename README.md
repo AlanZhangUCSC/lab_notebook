@@ -1325,10 +1325,16 @@ overlap coefficient ranks are pretty low, indicating that true haplotypes are no
 performs a little bit better for the shotgun sequencing samples, a LOT of other nodes would also be selected. I think
 I need to come up with a better way to reduce the search space.
 
-I suddenly realized that Pranav was simulating and working with tiled amplicon data, meaning that much more reads can be 
-deduplicated. I then simulated 100K amplicon data and ran my current `panMAMA` implementation on it. As expected, 
-runtime is much shorter for the amplicon samples than shotgun sequencing samples. Using 8 threads ormal mode took *24.6* 
-minutes, while low-memory mode took *29.5* minutes. In comparison, 100K shotgun samples took *120* minutes on 8 threads. 
-Maybe, what we currently have is pretty good afterall? I will discuss this with Russ tomorrow.
+I started trying WEPP's node scoring approach again with the tiled amplicon data. I tried it manually (running commands
+on terminal) and found that it's very good with some haplotypes for also very bad for others. After reading the WEPP
+paper on biorxiv, I found that there's one step that I missed for scoring the nodes: from highest scoring node, after
+removing the top node, I need to update other node scores by subtracting from them read scores that are also
+parsimonious for the node just removed. I will work on this tomorrow.
 
-Nevertheless, I still need to think of a better way to reduce the search space.
+I suddenly realized that Pranav was simulating and working with tiled amplicon data, meaning that much more reads can be
+deduplicated. I then simulated 100K amplicon data and ran my current `panMAMA` implementation on it. As expected,  
+runtime is much shorter for the amplicon samples than shotgun sequencing samples. Using 8 threads, normal mode took 
+*24.6*  minutes, while low-memory mode took *29.5* minutes. In comparison, 100K shotgun samples took *120* minutes on 8 
+threads. Maybe, what we currently have is pretty good afterall? I will discuss this with Russ tomorrow.
+
+Nevertheless, I still need to implement a better way to reduce the search space. One WIP is the WEPP scoring approach.
