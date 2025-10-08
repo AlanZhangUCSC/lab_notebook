@@ -11,7 +11,8 @@ REFERENCE_PRIMER_BED_FILE=$5
 REFERENCE_FASTA_FILE=$6
 JVARKIT=$7
 OUT_DIR=$8
-NUM_SNP=$9
+INTERMEDIATE=$9
+NUM_SNP=$10
 
 NUM_SNPS=($NUM_SNP)
 NUM_HAPS=(1 5 10 20 50 100)
@@ -159,30 +160,32 @@ for parameter in "${parameter_combinations[@]}"; do
   sed -i 's/:/\t/g' ${node_rank_file}
 
   # clean up
-  rm ${output_prefix}.randomNodeIDs.txt
-  rm ${output_prefix}.*.${num_snp}snps.fa
+  if [[ "$INTERMEDIATE" == "delete_intermediate" ]]; then
+    rm ${output_prefix}.randomNodeIDs.txt
+    rm ${output_prefix}.*.${num_snp}snps.fa
 
-  if [[ "$seq_type" -eq 0 ]]; then
-    rm ${output_prefix}.iss.tmp*vcf
-    rm ${output_prefix}_R1.fastq
-    rm ${output_prefix}_R2.fastq
-  fi
+    if [[ "$seq_type" -eq 0 ]]; then
+      rm ${output_prefix}.iss.tmp*vcf
+      rm ${output_prefix}_R1.fastq
+      rm ${output_prefix}_R2.fastq
+    fi
 
-  if [[ "$seq_type" -eq 1 ]]; then
-    rm ${output_prefix}.merged.fasta
-    rm -rf $swampy_temp_folder
-    rm ${output_prefix}_R1.fastq
-    rm ${output_prefix}_R2.fastq
-    rm $trimmed_fastq
-    rm $trimmed_sorted_bam
-    rm $trimmed_bam
-    rm $sorted_bam
-    rm ${sorted_bam}.bai
-    rm $trimmed_sc_removed_bam
-    rm $swampy_abundance_file
-    rm ${output_prefix}_amplicon_abundances_summary.tsv
-    rm ${output_prefix}_PCR_errors.vcf
-    rm ${output_prefix}.log
+    if [[ "$seq_type" -eq 1 ]]; then
+      rm ${output_prefix}.merged.fasta
+      rm -rf $swampy_temp_folder
+      rm ${output_prefix}_R1.fastq
+      rm ${output_prefix}_R2.fastq
+      rm $trimmed_fastq
+      rm $trimmed_sorted_bam
+      rm $trimmed_bam
+      rm $sorted_bam
+      rm ${sorted_bam}.bai
+      rm $trimmed_sc_removed_bam
+      rm $swampy_abundance_file
+      rm ${output_prefix}_amplicon_abundances_summary.tsv
+      rm ${output_prefix}_PCR_errors.vcf
+      rm ${output_prefix}.log
+    fi
   fi
 
   touch $node_rank_file
