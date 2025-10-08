@@ -1173,10 +1173,162 @@ for num_snp in 0 1 5 10 20; do
     /home/alan/tools/SWAMPy/ref/MN908947.3.fasta \
     /home/alan/tools/jvarkit/dist/jvarkit.jar \
     /scratch1/alan/lab_notebook/panmama/overlap_coefficients/out \
+    delete_intermediate \
     $num_snp > /dev/null 2>&1 &
 done
 ```
 
 This is currently running on `silverbullet`. I will take a look at the results tomorrow.
 
+## 10/7/2025
 
+Here are some stats of the results (for full results, see `panmama/overlap_coefficients/shotgun.results` and
+`panmama/overlap_coefficients/amplicon.results`):
+
+### Shotgun sequencing
+
+```
+num_hap  num_snp  seq_type  depth  min_rank  max_rank  median_rank
+1        0        0         500    0         0         0
+1        1        0         500    0         0         0
+1        5        0         500    0         0         0
+1        10       0         500    0         0         0
+1        20       0         500    0         0         0
+5        0        0         500    0         89        0
+5        1        0         500    0         0         0
+5        5        0         500    0         133       12
+5        10       0         500    0         21        0
+5        20       0         500    0         27        0
+10       0        0         500    0         119       0.5
+10       1        0         500    0         25        0
+10       5        0         500    0         119       0
+10       10       0         500    0         27        0
+10       20       0         500    0         1199      0
+20       0        0         500    0         491       0
+20       1        0         500    0         190       0
+20       5        0         500    0         321       0
+20       10       0         500    0         509       0
+20       20       0         500    0         417       51.5
+50       0        0         500    0         728       0
+50       1        0         500    0         252       0
+50       5        0         500    0         1014      0
+50       10       0         500    0         508       0
+50       20       0         500    0         905       0
+100      0        0         500    0         1340      0
+100      1        0         500    0         1771      0
+100      5        0         500    0         1490      18
+100      10       0         500    0         1241      82.5
+100      20       0         500    0         1617      7
+1        0        0         1000   0         0         0
+1        1        0         1000   0         0         0
+1        5        0         1000   0         0         0
+1        10       0         1000   0         0         0
+1        20       0         1000   0         0         0
+5        0        0         1000   0         23        0
+5        1        0         1000   0         4         0
+5        5        0         1000   0         0         0
+5        10       0         1000   0         26        0
+5        20       0         1000   0         249       0
+10       0        0         1000   0         189       0
+10       1        0         1000   0         164       0
+10       5        0         1000   0         49        0
+10       10       0         1000   0         39        0
+10       20       0         1000   0         303       37.5
+20       0        0         1000   0         75        0
+20       1        0         1000   0         62        0
+20       5        0         1000   0         297       0
+20       10       0         1000   0         65        0
+20       20       0         1000   0         481       0
+50       0        0         1000   0         172       0
+50       1        0         1000   0         570       0
+50       5        0         1000   0         292       0
+50       10       0         1000   0         203       0
+50       20       0         1000   0         519       0
+100      0        0         1000   0         482       0
+100      1        0         1000   0         695       0
+100      5        0         1000   0         593       0
+100      10       0         1000   0         937       0
+100      20       0         1000   0         1460      0
+```
+
+### Tiled amplicon sequencing
+
+```
+num_hap  num_snp  seq_type  depth  min_rank  max_rank  median_rank
+1        0        1         500    23        23        23
+1        1        1         500    0         0         0
+1        5        1         500    17        17        17
+1        10       1         500    0         0         0
+1        20       1         500    47        47        47
+5        0        1         500    232       1233      906
+5        1        1         500    255       2729      1713
+5        5        1         500    56        643       439
+5        10       1         500    253       1877      1262
+5        20       1         500    58        2315      586
+10       0        1         500    62        5714      692
+10       1        1         500    149       2062      564.5
+10       5        1         500    129       2039      968
+10       10       1         500    227       2828      1245.5
+10       20       1         500    37        3582      1883.5
+20       0        1         500    134       5274      998.5
+20       1        1         500    96        2915      1407.5
+20       5        1         500    105       5027      1116
+20       10       1         500    140       4749      2079
+20       20       1         500    43        3918      1274.5
+50       0        1         500    66        6687      1686
+50       1        1         500    52        6232      2124
+50       5        1         500    14        9003      2020.5
+50       10       1         500    132       7184      1785
+50       20       1         500    101       6261      1905.5
+100      0        1         500    111       8461      1982.5
+100      1        1         500    165       8915      1910
+100      5        1         500    29        5538      1839
+100      10       1         500    70        8112      1938
+100      20       1         500    128       8900      1708.5
+1        0        1         1000   7         7         7
+1        1        1         1000   0         0         0
+1        5        1         1000   0         0         0
+1        10       1         1000   2         2         2
+1        20       1         1000   212       212       212
+5        0        1         1000   455       6224      1780
+5        1        1         1000   139       2042      1268
+5        5        1         1000   452       1295      724
+5        10       1         1000   260       1910      475
+5        20       1         1000   118       877       367
+10       0        1         1000   27        1847      1217
+10       1        1         1000   70        2403      256.5
+10       5        1         1000   72        3154      459.5
+10       10       1         1000   267       2365      890
+10       20       1         1000   93        2856      1199
+20       0        1         1000   117       6584      1576.5
+20       1        1         1000   200       2605      1064
+20       5        1         1000   339       6378      1577
+20       10       1         1000   41        4245      1566.5
+20       20       1         1000   37        3512      1590.5
+50       0        1         1000   31        4911      1356
+50       1        1         1000   310       5102      1636
+50       5        1         1000   70        7058      1792
+50       10       1         1000   26        7466      1518
+50       20       1         1000   4         6954      1507
+100      0        1         1000   32        8745      1696
+100      1        1         1000   18        6383      1608
+100      5        1         1000   284       5937      3426.5
+100      10       1         1000   82        4691      2008
+100      20       1         1000   92        7673      2611
+```
+
+I also just realized that I completely forgot to run it with replicates, so I will make sure to include that in my 
+subsequent runs.
+
+I'm **not** very confident about the results, especially for the tiled amplicon sequencing. The median true haplotype 
+overlap coefficient ranks are pretty low, indicating that true haplotypes are not being selected very well. While it
+performs a little bit better for the shotgun sequencing samples, a LOT of other nodes would also be selected. I think
+I need to come up with a better way to reduce the search space.
+
+I suddenly realized that Pranav was simulating and working with tiled amplicon data, meaning that much more reads can be 
+deduplicated. I then simulated 100K amplicon data and ran my current `panMAMA` implementation on it. As expected, 
+runtime is much shorter for the amplicon samples than shotgun sequencing samples. Using 8 threads ormal mode took *24.6* 
+minutes, while low-memory mode took *29.5* minutes. In comparison, 100K shotgun samples took *120* minutes on 8 threads. 
+Maybe, what we currently have is pretty good afterall? I will discuss this with Russ tomorrow.
+
+Nevertheless, I still need to think of a better way to reduce the search space.
