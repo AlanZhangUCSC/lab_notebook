@@ -1338,3 +1338,26 @@ runtime is much shorter for the amplicon samples than shotgun sequencing samples
 threads. Maybe, what we currently have is pretty good afterall? I will discuss this with Russ tomorrow.
 
 Nevertheless, I still need to implement a better way to reduce the search space. One WIP is the WEPP scoring approach.
+
+## 10/8/2025
+
+After discussing with Russ, he also thinks that my current implementation might be pretty good already. I will simulate
+1.5 million amplicon and shotgun sequencing reads and run my current `panMAMA` implementation on them. I will run them 
+on the SARS 8M tree on 64 threads.
+
+```
+Mode        SeqType    Runtime
+--------------------------------------------
+Normal      Amplicon   2342.3s  (39.04 mins)
+LowMem      Amplicon   2801.53s (46.68 mins)
+LowMem      Shotgun    16246.8s (4.512 hrs)
+```
+
+This is actually not bad compared to WEPP. This should also be further improved after reducing the search space before
+the scoring step. Shotgun sequencing samples took much longer than amplicon samples because shotgun reads are much less
+collaspible than amplicon reads. 1,500,000 shotgun reads were collapsed to 374,400 unique k-min-mer sets (~25% of
+original reads), while 1,401,619 amplicon reads were collapsed to 57,922 unique k-min-mer sets (~4.13% of original
+reads).
+
+
+
