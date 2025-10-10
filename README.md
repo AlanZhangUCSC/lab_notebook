@@ -1504,5 +1504,15 @@ docker run --rm \
 
 Nice. It also built on Phoenix. Now I can run more tests on Phoenix.
 
+## 10/10/2025
+
+:exclamation: Reminder: Evaluation scripts and figures for genotyping with mutation spectrum is in `panmap`'s `main`
+branch (commit `f239d06`) in `dev/denotype_eval`[^1].
+
+[^1]: This is a reminder created before I deleted `bzhan146@emerald:/private/groups/corbettlab/alan/panmap` on phoenix.
+
+Today I will write a script on phoenix to generate benchmark data. This script should be generalizable to any tree with
+customizable parameters.
 
 
+## 10/11/2025
