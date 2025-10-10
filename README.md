@@ -1359,5 +1359,192 @@ collaspible than amplicon reads. 1,500,000 shotgun reads were collapsed to 374,4
 original reads), while 1,401,619 amplicon reads were collapsed to 57,922 unique k-min-mer sets (~4.13% of original
 reads).
 
+## 10/9/2025
+
+### Found some major bugs in calculating WEPP node scores...
+
+1. `epp` was not updated correctly. I was only incrementing it when a read score was updated. This caused `epp` to be 
+   undercounted.
+2. I didn't account for when nodes are identical or indistinguishable by their k-min-mer sets. I was treating them as
+   separate nodes when identical nodes should be treated as the same node.
+
+### Some nodes were just not selected by WEPP scores for some reason...
+
+I arbitrarily used `test_data/sars/rep3/sars20000_10hap-a_100000_rep3_R*.fastq` as a test sample. And true haplotypes'
+rank for their node scores were:
+
+```
+Rank  NodeID                                                                              Score
+-------------------------------------------------------------------------------------------------------
+3675  USA/CA-CHLA-PLM46323971/2020|MZ722413.1|2020-12-09                                  0.1845768297
+5244  USA/IL-CDC-QDX40817725/2022|OP411780.1|2022-08-28                                   0.0764590824
+2     England/MILK-344FEB3/2022|OV817379.1|2022-01-26                                     57.8659772952
+1     Denmark/DCGC-599763/2022|OY836217.1|2022-10-17                                      85.0571468377
+3     USA/CO-CDPHE-41411769/2023|PP031687.1|2023-09-25                                    54.3541009750
+4     USA/CO-CDPHE-2007061387/2020|OK659067.1|2020-07-06                                  25.4734981362
+7     USA/WA-S20280/2022|ON660803.1|2022-05-20                                            8.3954038314
+8     USA/FL-CDC-LC0637436/2022|ON608372.1|2022-05-12                                     8.1637073062
+10    Germany/Molecular_surveillance_of_SARS-CoV-2_in_Germany/2021|OV342561.1|2021-09-10  6.2916502660
+5     USA/CA-CDC-STM-XAH3WETJM/2022|OP911649.1|2022-11-14                                 19.0574859274
+```
+
+It's very weird that the the first 2 haplotypes are ranked very low. I then filtered out the reads for only
+`MZ722413.1`. Surprisingly, even with reads that are only from `MZ722413.1`, it still ranked **636** for its node score.
+And it's not even selected if I were to progressively exhaust the reads during the selection process. The same happened
+for `OP411780.1`, which ranked **1016** for its node score and was also not selected if I were to progressively exhaust
+the reads during the selection process. As a positive control, I filtered out the reads for only `OV342561.1`. As
+expected, it was ranked **1** for its node score.
+
+I then investigated how the reads map to `MZ722413.1`. Of all reads that were simulated from `MZ722413.1`, after
+collapsing them, 10,528 unique reads map parismoniously to `MZ722413.1`, while 1,277 map parsimoniously elsewhere,
+meaning that they were sequencing errors. Additionally, among the 1,277 reads that map parsimoniously elsewhere, the
+vast majority of them have very low epp value, meaning that they are parsimonious for very few nodes, which boost up
+their score weights for other nodes. This was also observed for `OP411780.1`. `OV817379.1`, on the other hand, while
+also have reads that map parsimoniously elsewhere and have very low epp values, some reads that do map parsimoniously to
+`OV817379.1` also have very low epp values, meaning that they are parsimonious for many nodes, which downgrades their
+score weights for other nodes.
+
+I then tried pruning the reads that have obvious errors using the `--skip-singleton` option. This boosted up the rank of
+`MZ722413.1` to **39** for its node score. The same thing happened for `OP411780.1`, whose node score rank was improved
+to **39**.
+
+What if I used perfect reads with no errors? I simulated 100,000 perfect reads for the same set of 10 haplotypes, and 
+here are their ranks for their node scores:
+
+```
+Rank  NodeID                                                                              Score
+-------------------------------------------------------------------------------------------------------
+118  USA/CA-CHLA-PLM46323971/2020|MZ722413.1|2020-12-09                                  0.2122666691
+337  USA/IL-CDC-QDX40817725/2022|OP411780.1|2022-08-28                                   0.0570905193
+3    England/MILK-344FEB3/2022|OV817379.1|2022-01-26                                     56.9054583197
+1    Denmark/DCGC-599763/2022|OY836217.1|2022-10-17                                      94.1630006842
+2    USA/CO-CDPHE-41411769/2023|PP031687.1|2023-09-25                                    64.9913636546
+4    USA/CO-CDPHE-2007061387/2020|OK659067.1|2020-07-06                                  34.9137689944
+8    USA/WA-S20280/2022|ON660803.1|2022-05-20                                            6.9469028815
+13   USA/FL-CDC-LC0637436/2022|ON608372.1|2022-05-12                                     3.6754517996
+7    Germany/Molecular_surveillance_of_SARS-CoV-2_in_Germany/2021|OV342561.1|2021-09-10  8.0952134279
+5    USA/CA-CDC-STM-XAH3WETJM/2022|OP911649.1|2022-11-14                                 17.6248774466
+```
+
+After filtering the reads separately for `MZ722413.1` and `OP411780.1`, each filtered sample has the true haplotype
+ranked **1** for its node score. I also noticed that these two haplotypes do not have parsimonious reads that have low
+epp values (lowest epp for `MZ722413.1` is 25, for `OP411780.1` is 33, `OV817379.1` as epp value of 1 for 24 collapsed
+reads for comparison), meaning that all the reads for these two haplotypes are parsimonious for a non-trivial amount of
+nodes, meaning their node scores can get "drowned out" by other true nodes that have more "unique" reads on the tree. 
+
+Note that this is all done on the SARS 20K tree, which is much less balanced than the SARS 8M tree. I will run more
+tests on the SARS 8M tree. I will also need to generate some consistent datasets on phoenix.
+
+### Make a docker for panmap/panMAMA to build on phoenix
+
+```Dockerfile
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+  build-essential \
+  cmake \
+  git \
+  wget \
+  protobuf-compiler \
+  libprotobuf-dev \
+  libboost-program-options-dev \
+  libboost-iostreams-dev \
+  libboost-filesystem-dev \
+  libboost-system-dev \
+  libboost-date-time-dev \
+  zlib1g-dev \
+  capnproto \
+  libcapnp-dev \
+  autoconf \
+  automake \
+  libtool \
+  libeigen3-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+# dirty fix for samtools build...
+RUN cd /tmp && \
+  wget https://github.com/samtools/htslib/releases/download/1.20/htslib-1.20.tar.bz2 && \
+  tar -xjf htslib-1.20.tar.bz2 && \
+  cd htslib-1.20 && \
+  ./configure --prefix=/usr/local --disable-lzma --disable-bz2 --disable-libcurl && \
+  make -j$(nproc) && \
+  make install && \
+  ldconfig && \
+  cd / && \
+  rm -rf /tmp/htslib-1.20*
+
+WORKDIR /panmap
+
+RUN echo 'PS1="\[\033[01;32m\]tiger\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> ~/.bashrc
+
+CMD ["/bin/bash"]
+```
+
+#### Start on Docker build
+
+To build the docker image
+```
+docker build -t panmap-dev .
+```
+
+To enter the interactive shell
+```
+docker run --rm -it \
+  -v $(pwd):/panmap \
+  -w /panmap \
+  panmap-dev
+```
+
+To build `panmap` fresh from inside the container
+```
+mkdir -p /panmap/build && cd /panmap/build
+cmake ..
+make -j 32
+```
+
+#### Running things inside the container from the host
+
+A simple example:
+```
+docker run --rm \
+  -v $(pwd):/panmap \
+  -w /panmap \
+  --user $(id -u):$(id -g) \
+  panmap-dev \
+  bash -c "echo rawrrr > tiger"
+```
+*Using --user tag for `tiger` to be owned by user instead of root*
+
+<br/>
+
+To rebuild `panmap` from the host
+```
+docker run --rm \
+  -v $(pwd):/panmap \
+  -w /panmap \
+  panmap-dev \
+  bash -c "cd /panmap/build && make -j 32"
+```
+*Not using --user tag to avoid permission issues*
+
+To run `panmap` from the host
+```
+docker run --rm \
+  -v $(pwd):/panmap \
+  -v /scratch1/alan/goodmap/panmap/panmans:/panmap/panmans \
+  -v /scratch1/alan/goodmap/panmap/test_data:/panmap/test_data \
+  -w /panmap \
+  --user $(id -u):$(id -g) \
+  panmap-dev \
+  bash -c "/panmap/build/bin/panmap /panmap/panmans/sars_20000_optimized.panman \
+          /panmap/test_data/sars/rep1/sars20000_5hap-a_100000_rep1_R*.fastq \
+          -m /panmap/panmans/sars_20000.pmai \
+          --cpus 4"
+```
+
+Nice. It also built on Phoenix. Now I can run more tests on Phoenix.
+
 
 
