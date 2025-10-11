@@ -1477,16 +1477,6 @@ docker run --rm \
 
 <br/>
 
-To rebuild `panmap` from the host
-```
-docker run --rm \
-  -v $(pwd):/panmap \
-  -w /panmap \
-  panmap-dev \
-  bash -c "cd /panmap/build && make -j 32"
-```
-*Not using --user tag to avoid permission issues*
-
 To run `panmap` from the host
 ```
 docker run --rm \
@@ -1502,6 +1492,16 @@ docker run --rm \
           --cpus 4"
 ```
 
+To rebuild `panmap` from the host
+```
+docker run --rm \
+  -v $(pwd):/panmap \
+  -w /panmap \
+  panmap-dev \
+  bash -c "cd /panmap/build && make -j 32"
+```
+*Not using --user tag to avoid permission issues*
+
 Nice. It also built on Phoenix. Now I can run more tests on Phoenix.
 
 ## 10/10/2025
@@ -1514,5 +1514,101 @@ branch (commit `f239d06`) in `dev/denotype_eval`[^1].
 Today I will write a script on phoenix to generate benchmark data. This script should be generalizable to any tree with
 customizable parameters.
 
+### Borrowed from [10/6/2025](#1062025)
 
-## 10/11/2025
+<ol>
+  <li>Original and mutated haplotype
+    <ol>
+      <li>All original haplotypes</li>
+      <li>All mutated haplotypes</li>
+      <li>Mix of original and mutated haplotypes</li>
+    </ol>
+  </li>
+  <li>Sequencing type
+    <ol>
+      <li>shot-gun</li>
+      <li>tailed amplicon</li>
+    </ol>
+  </li>
+  <li>Sequencing depth</li>
+</ol>
+
+I will make all combinations of (`#SNPs`, `#Haplotypes`, `%Mutated`, `SeqType`, `Depth`)
+
+`#SNP: 0 5 10 20`
+
+`#haplotypes: 1 5 10 50 100`
+
+`%Mutated: 20% 50% 70% 100%` *If #SNP > 0*
+
+`SeqType: shot-gun(0) tiled-amplicon(1)`
+
+`#Reads: 100000 500000 1000000 2000000`
+
+*Each combination has 5 replicates*
+
+Use `panmama/benchmark/gencomb.py` to generate combinations of parameters.
+
+```
+python3 panmama/benchmark/gencomb.py \
+        --snps 0 5 10 20 \
+        --haplotypes 1 5 10 50 100 \
+        --percent-mutated 0.2 0.4 0.8 1.0 \
+        --seq-types shotgun amplicon \
+        --num-reads 100000 500000 1000000 2000000 \
+        --num-rep 5 | head | column -t
+```
+
+```
+seq_type  haplotype  snp  percent_mutated  num_reads  rep
+shotgun   1          0    0                100000     0
+shotgun   1          0    0                100000     1
+shotgun   1          0    0                100000     2
+shotgun   1          0    0                100000     3
+shotgun   1          0    0                100000     4
+shotgun   1          0    0                500000     0
+shotgun   1          0    0                500000     1
+shotgun   1          0    0                500000     2
+shotgun   1          0    0                500000     3
+```
+
+
+Use `panmama/benchmark/genreads.sh` to generate reads.
+
+```
+bash panmama/benchmark/genreads.sh \
+  --seqtype shotgun \
+  --numhap 5 \
+  --numsnp 10 \
+  --permut 0.4 \
+  --numreads 1000 \
+  --rep 0 \
+  --cpus 4 \
+  --panmap /private/groups/corbettlab/alan/panmap/ \
+  --panman /private/groups/corbettlab/alan/panmap/panmans/sars_optimized.panman \
+  --pmi /private/groups/corbettlab/alan/panmap/panmans/sars_optimized.panman.pmi \
+  --random-seed random \
+  --out-prefix panmama/benchmark/test
+```
+
+or to simulate `amplicon` reads
+
+```
+bash panmama/benchmark/genreads.sh \
+  --seqtype amplicon \
+  --numhap 5 \
+  --numsnp 10 \
+  --permut 0.4 \
+  --numreads 1000 \
+  --rep 0 \
+  --cpus 4 \
+  --panmap /private/groups/corbettlab/alan/panmap/ \
+  --panman /private/groups/corbettlab/alan/panmap/panmans/sars_optimized.panman \
+  --pmi /private/groups/corbettlab/alan/panmap/panmans/sars_optimized.panman.pmi \
+  --random-seed random \
+  --swampy /private/home/bzhan146/tools/SWAMPy/src/simulate_metagenome.py \
+  --reference-primer-bed-file /private/home/bzhan146/tools/SWAMPy/primer_sets/nimagenV2.bed \
+  --reference-fasta-file /private/home/bzhan146/tools/SWAMPy/ref/MN908947.3.fasta \
+  --jvarkit /private/home/bzhan146/tools/jvarkit/dist/jvarkit.jar \
+  --out-prefix panmama/benchmark/test
+```
