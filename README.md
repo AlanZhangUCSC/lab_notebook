@@ -1547,7 +1547,7 @@ I will make all combinations of (`#SNPs`, `#Haplotypes`, `%Mutated`, `SeqType`, 
 
 *Each combination has 5 replicates*
 
-Use `panmama/benchmark/gencomb.py` to generate combinations of parameters.
+Use `/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gencomb.py` to generate combinations of parameters.
 
 ```
 python3 panmama/benchmark/gencomb.py \
@@ -1573,7 +1573,7 @@ shotgun   1          0    0                500000     3
 ```
 
 
-Use `panmama/benchmark/genreads.sh` to generate reads.
+Use `/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/genreads.sh` to generate reads.
 
 ```
 bash panmama/benchmark/genreads.sh \
