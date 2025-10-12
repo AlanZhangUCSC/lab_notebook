@@ -212,7 +212,6 @@ done
 
 simulate_snps_parameter_string=$(python3 $SCRIPT_DIR/shuff.py $simulate_snps_parameter_string --seed $HASHED_SEED)
 
-echo $dump_sequences_parameter_string 
 cmd=(docker run --rm
   -v "$(realpath $PANMAP):/panmap"
   -v "$(realpath $(dirname $PANMAN)):/panmans"
@@ -234,6 +233,7 @@ fi
 abundance_file=${OUT_PREFIX}.abundance.txt
 touch $abundance_file
 
+
 abundances_5haps=(0.5 0.2 0.15 0.1 0.05)
 abundances_10haps=(0.15 0.15 0.15 0.15 0.1 0.1 0.05 0.05 0.05 0.05)
 abundances_20haps=($(printf "0.05 %.0s" {1..20}))
@@ -254,6 +254,20 @@ elif [[ "$NUMHAP" -eq 100 ]]; then
 fi
 
 genomes_files=(${OUT_PREFIX}.*snps.fa)
+
+mutation_info_file=${OUT_PREFIX}.mutation_info.txt
+genomes_mutation_info=$(for fasta_file in "${genomes_files[@]}"; do
+  head -n 1 "$fasta_file" | sed 's/^>//g'
+done)
+echo "$genomes_mutation_info" > $mutation_info_file
+
+awk 'NR==FNR {order[$1]=NR; next} {print order[$1], $0}' \
+  $abundance_file \
+  $mutation_info_file | \
+  sort -n | \
+  cut -d' ' -f2- > ${mutation_info_file}.tmp && mv ${mutation_info_file}.tmp $mutation_info_file
+
+
 
 if [[ "$SEQTYPE" == "shotgun" ]]; then
   for fasta_file in "${genomes_files[@]}"; do
@@ -367,6 +381,7 @@ elif [[ "$SEQTYPE" == "amplicon" ]]; then
 
 
 fi
+
 
 for fasta_file in "${genomes_files[@]}"; do
   rm $fasta_file
