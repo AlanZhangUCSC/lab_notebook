@@ -1612,3 +1612,41 @@ bash panmama/benchmark/genreads.sh \
   --jvarkit /private/home/bzhan146/tools/jvarkit/dist/jvarkit.jar \
   --out-prefix panmama/benchmark/test
 ```
+
+## 10/13/2025
+
+I just implemented a fast node scoring function `scoreReads()` and `scoreReadsHelper()`. This will traverse the tree and
+only count the number of matching k-min-mers in each read instead of pseudo-chaining them. This should make the read and
+node scoring step much faster as a pre-filter step. The plan is to still do full chaining after filtering out the
+probable nodes and collapsing the tree.
+
+### Quick follow up on [10/9/2025](#1092025)
+
+Getting sidetracked a bit but I wonder if the two true nodes, `MZ722413.1` and `OP411780.1`, have low scores  because 
+reads that parismoniously  map to them also parsimoniously map to many inferred internal nodes, which drives up the epp 
+and reduces the read weights that map to the true nodes.  
+
+Not counting internal nodes when counting epp for reads, the node score ranks for the true haplotypes from sample
+`test_data/sars/rep3/sars20000_10hap-a_100000_rep3_R*.fastq`:
+
+```
+2292  USA/CA-CHLA-PLM46323971/2020|MZ722413.1|2020-12-09                                  0.3971806677
+3833  USA/IL-CDC-QDX40817725/2022|OP411780.1|2022-08-28                                   0.1865463517
+2     England/MILK-344FEB3/2022|OV817379.1|2022-01-26                                     58.1048931881
+1     Denmark/DCGC-599763/2022|OY836217.1|2022-10-17                                      85.2544216228
+3     USA/CO-CDPHE-41411769/2023|PP031687.1|2023-09-25                                    54.7220291402
+4     USA/CO-CDPHE-2007061387/2020|OK659067.1|2020-07-06                                  27.1159401016
+8     USA/WA-S20280/2022|ON660803.1|2022-05-20                                            8.3984476356
+6     USA/FL-CDC-LC0637436/2022|ON608372.1|2022-05-12                                     10.3158523194
+9     Germany/Molecular_surveillance_of_SARS-CoV-2_in_Germany/2021|OV342561.1|2021-09-10  6.8616225312
+5     USA/CA-CDC-STM-XAH3WETJM/2022|OP911649.1|2022-11-14                                 19.1232183505
+```
+
+It looks a little bit better but still not very good. Never mind then...
+
+### Use fast-mode as default
+
+Since the fast-mode, which doesn't pseudo-chain the k-min-mer matches, outputs very similar results as the normal mode,
+Russ and I decided to have the fast mode as the default option for faster speed. I will reserve a whole node on phoenix
+to do some benchmark on the runtime.
+
