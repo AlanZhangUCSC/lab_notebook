@@ -1650,3 +1650,6 @@ Since the fast-mode, which doesn't pseudo-chain the k-min-mer matches, outputs v
 Russ and I decided to have the fast mode as the default option for faster speed. I will reserve a whole node on phoenix
 to do some benchmark on the runtime.
 
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/fast-mode.sh --array=0-3
+```

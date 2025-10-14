@@ -233,7 +233,7 @@ fi
 abundance_file=${OUT_PREFIX}.abundance.txt
 touch $abundance_file
 
-
+abundances_1hap=(1.0)
 abundances_5haps=(0.5 0.2 0.15 0.1 0.05)
 abundances_10haps=(0.15 0.15 0.15 0.15 0.1 0.1 0.05 0.05 0.05 0.05)
 abundances_20haps=($(printf "0.05 %.0s" {1..20}))
@@ -387,3 +387,7 @@ for fasta_file in "${genomes_files[@]}"; do
   rm $fasta_file
 done
 rm $random_nodes_file
+
+# output files:
+# shotgun: ${OUT_PREFIX}_R1.fastq, ${OUT_PREFIX}_R2.fastq ${OUT_PREFIX}.mutation_info.txt ${OUT_PREFIX}.abundance.txt
+# amplicon: ${OUT_PREFIX}.trimmed.fastq ${OUT_PREFIX}.mutation_info.txt ${OUT_PREFIX}.abundance.txt
