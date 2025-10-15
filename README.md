@@ -1653,3 +1653,56 @@ to do some benchmark on the runtime.
 ```
 sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/fast-mode.sh --array=0-3
 ```
+
+## 10/14/2025
+
+I did a little bit of optimization and now scoring 1.5 million amplicon short reads on the SARS 8M took ~8 minutes,
+using 32 threads.
+
+### Search space reduction methods options
+
+As discussed on [10/9/2025](#some-nodes-were-just-not-selected-by-wepp-scores-for-some-reason), some nodes are not
+selected using WEPP scoring methods because they are very similar to other nodes on the tree, meaning that all of the 
+reads that map pasimoniously to them have very high EPP values, thus making them have less scores and more susceptible
+to sequencing errors.
+
+Russ and I discussed some other options:
+
+1. Find local optimas of sum read scores
+2. Find local optimas of WEPP node scores
+3. Regularize EPP by giving it a "span value", which measures the genetic distance between the parsimonious nodes...
+e.g. if all the parsimonious nodes of a read are neighbors, give the read weight a positive correction to increase the 
+node scores of those nodes.
+4. Combine option 2 and 3
+
+I will be trying out these options in the next couple of dates
+
+### Efficient way to compute EPPs
+
+I can actually compute the EPP during scoring with minimum overhead. During scoring, if a read has a new max score, I 
+can set a `read.lastParsimoniousNode` to the current node. Downstream, when the read's score is changed from max to
+a low score, I can calculate the number of parsimoniously mapped nodes by
+`epp += curNode.dfsIndex - read.lastParsimoniousNode.dfsIndex`. If a new max score is reached, I can simply reset the
+`epp`.
+
+As implemented:
+```c++
+auto& lastParsimoniousNode = curRead.lastParsimoniousNode;
+if (score > maxScore) {
+  // reset epp and assign current node as lastParsimoniousNode
+  curRead.epp = 0;
+  lastParsimoniousNode = node;
+} else if (score < maxScore) {
+  // collect epp and reset lastParsimoniousNode
+  if (lastParsimoniousNode != nullptr) {
+    curRead.epp += node->dfsIndex - lastParsimoniousNode->dfsIndex;
+    lastParsimoniousNode = nullptr;
+  }
+} else {
+  if (lastParsimoniousNode == nullptr) {
+    lastParsimoniousNode = node;
+  }
+}
+```
+
+This method would require me to handle identical nodes on the tree more carefully, which is a WIP right now.
