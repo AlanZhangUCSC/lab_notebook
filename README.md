@@ -1706,3 +1706,23 @@ if (score > maxScore) {
 ```
 
 This method would require me to handle identical nodes on the tree more carefully, which is a WIP right now.
+
+## 10/15/2025
+
+Today I finished collapsing the tree.
+
+WIP: Efficient counting of read EPP during scoring. It's actually a bit trickier than described on
+[10/14/2025](#efficient-way-to-compute-epps).
+
+## 10/16/2025
+
+After roughly a day, I finally correctly implememnted an efficient counting of read EPPs during scoring. Now the program
+is able to score the SARS 8M tree and simultaneously count the read EPPs in ~6.5 minutes using 32 threads.
+
+For bookkeeping, this is implemented in commit `ccc3bcc73b31ba686b4a43d8fedef5180d1f1582`.
+
+Now I will experiment with various methods to reduce search space, as described on
+[10/14/2025](#search-space-reduction-methods-options).
+
+Just implemented calculation of the sum of raw read matches for each node on the tree, which took ~180s for 1.5 million
+amplicon short reads on the SARS 8M tree. Will work on the WEPP score tomorrow.
