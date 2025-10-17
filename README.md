@@ -1727,3 +1727,9 @@ Now I will experiment with various methods to reduce search space, as described 
 Just implemented calculation of the sum of raw read matches for each node on the tree (commit
 `eff3a812d9d76f69f0f04e78fb98221b4998d6c9`), which took ~180s for 1.5 million amplicon short reads on the SARS 8M tree.
 Will work on the WEPP score tomorrow.
+
+## 10/17/2025
+
+Just implemented the calculate of WEPP node scores in commit `2a327e40c1a6787b56971a148a989e7ac00a9d16`. Dynamic
+calculating of sum raw read matches and WEPP scores are confirmed to be correct after checking with brute foce on the
+SARS 20K tree.
