@@ -1724,5 +1724,6 @@ For bookkeeping, this is implemented in commit `ccc3bcc73b31ba686b4a43d8fedef518
 Now I will experiment with various methods to reduce search space, as described on
 [10/14/2025](#search-space-reduction-methods-options).
 
-Just implemented calculation of the sum of raw read matches for each node on the tree, which took ~180s for 1.5 million
-amplicon short reads on the SARS 8M tree. Will work on the WEPP score tomorrow.
+Just implemented calculation of the sum of raw read matches for each node on the tree (commit
+`eff3a812d9d76f69f0f04e78fb98221b4998d6c9`), which took ~180s for 1.5 million amplicon short reads on the SARS 8M tree.
+Will work on the WEPP score tomorrow.
