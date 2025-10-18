@@ -1736,7 +1736,7 @@ SARS 20K tree.
 
 ## 10/18/1025
 
-Today I will generate some test data. 
+Today I will generate some test data on phoenix.
 
 ```
 sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata.sh \
@@ -1753,3 +1753,6 @@ sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata.sh
   /private/groups/corbettlab/alan/panmap/panmans/sars_optimized.panman \
   /private/groups/corbettlab/alan/panmap/panmans/sars_20000.pmai
 ```
+
+I compressed the outputs into `data_sars_20K.tar.gz` and  `data_sars_8M.tar.gz` and removed the original output dirs for
+now. I also scp'ed the `*tar.gz` to `alan@silverbullet:/scratch1/alan/lab_notebook/panmama/benchmark`.
