@@ -1733,3 +1733,23 @@ Will work on the WEPP score tomorrow.
 Just implemented the calculate of WEPP node scores in commit `2a327e40c1a6787b56971a148a989e7ac00a9d16`. Dynamic
 calculating of sum raw read matches and WEPP scores are confirmed to be correct after checking with brute foce on the
 SARS 20K tree.
+
+## 10/18/1025
+
+Today I will generate some test data. 
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_optimized.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000.pmai
+```
+
+and 
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_optimized.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000.pmai
+```
