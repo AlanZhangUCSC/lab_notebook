@@ -37,6 +37,7 @@ read seqType numhap numsnps percentmutated numreads rep <<< "${combinations[$SLU
 docker load -i /private/groups/corbettlab/alan/panmap/panmap-dev.tar
 
 prefix="${seqType}_${numhap}_${numsnps}_${percentmutated}_${numreads}_${rep}"
+random_seed="${numhap}_${numsnps}_${percentmutated}_${numreads}_${rep}"
 bash /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/genreads.sh \
   --seqtype $seqType \
   --numhap $numhap \
@@ -48,7 +49,7 @@ bash /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/genreads.sh 
   --panmap /private/groups/corbettlab/alan/panmap/ \
   --panman $PANMAN_PATH \
   --pmi $PMAI_PATH  \
-  --random-seed $prefix \
+  --random-seed $random_seed \
   --swampy /private/home/bzhan146/tools/SWAMPy/src/simulate_metagenome.py \
   --reference-primer-bed-file /private/home/bzhan146/tools/SWAMPy/primer_sets/nimagenV2.bed \
   --reference-fasta-file /private/home/bzhan146/tools/SWAMPy/ref/MN908947.3.fasta \

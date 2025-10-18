@@ -1739,6 +1739,9 @@ SARS 20K tree.
 
 ### Generate test data on phoenix
 
+For a given combination of num_snps, num_haps, percent_mutated, num_reads, and replicate_number, generate the same set
+of haplotypes and abundances for amplicon and shotgun reads.
+
 ```
 sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata.sh \
   /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K \
