@@ -9,8 +9,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --output=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.log
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.err
-#SBATCH --partition=short
-#SBATCH --time=01:00:00
+#SBATCH --partition=medium
+#SBATCH --time=04:00:00
 #SBATCH --array=0-59%10
 
 set -x
@@ -37,7 +37,7 @@ read seqType numhap numsnps percentmutated numreads rep <<< "${combinations[$SLU
 docker load -i /private/groups/corbettlab/alan/panmap/panmap-dev.tar
 
 prefix="${seqType}_${numhap}_${numsnps}_${percentmutated}_${numreads}_${rep}"
-random_seed="${numhap}_${numsnps}_${percentmutated}_${numreads}_${rep}"
+random_seed="${numhap}_${numsnps}_${percentmutated}_${rep}"
 bash /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/genreads.sh \
   --seqtype $seqType \
   --numhap $numhap \

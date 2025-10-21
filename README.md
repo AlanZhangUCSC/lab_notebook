@@ -1739,8 +1739,8 @@ SARS 20K tree.
 
 ### Generate test data on phoenix
 
-For a given combination of num_snps, num_haps, percent_mutated, num_reads, and replicate_number, generate the same set
-of haplotypes and abundances for amplicon and shotgun reads.
+For a given combination of num_snps, num_haps, percent_mutated, and replicate_number, generate the same set
+of haplotypes and abundances for amplicon and shotgun reads with various depth.
 
 ```
 sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata.sh \
@@ -1754,11 +1754,38 @@ and
 ```
 sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata.sh \
   /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M \
-  /private/groups/corbettlab/alan/panmap/panmans/sars_optimized.panman \
-  /private/groups/corbettlab/alan/panmap/panmans/sars_20000.pmai
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai
 ```
 
 I compressed the outputs into `data_sars_20K.tar.gz` and  `data_sars_8M.tar.gz` and removed the original output dirs for
 now. I also scp'ed the `*tar.gz` to `alan@silverbullet:/scratch1/alan/lab_notebook/panmama/benchmark`.
 
-###
+## 10/19/2025
+
+### Oops, I generated the wrong data...
+
+I forgot to change the panman path when I copied over the bash command to run `gendata.sh` and ended up generating 
+samples of SARS 20K haplotypes in the `data_sars_8M/` dir. Anyway, regenereting data rn.
+
+### Trying different scoring schemes
+
+I wrote several node scoring schemes for selecting probable nodes.
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_small_trees.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_optimized.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K
+```
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_large_trees.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M
+```
