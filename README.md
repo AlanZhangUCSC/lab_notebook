@@ -1789,3 +1789,15 @@ sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap
   /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai \
   /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M
 ```
+
+## 10/20/2025 & 10/21/2025
+
+I just implemented the full WEPP scoring scheme, which includes updating the rest of the node scores every time a top
+scoring haplotype was selected. This was not implemented in the previous commit described on [10/17/2025](#10172025).
+
+The nodes scoring step and especially the node score updating step were not as fast as I'd like. So I spent the last two
+days making them fast enough to my satisfaction.
+
+Hmmm.. It seems like the penalty of `1/epp^2`, which is used in WEPP, might be too aggressive. I tried `1/epp` and it
+actually doesn't look too bad. I will send this to phoenix and do a couple rounds of testing.
+
