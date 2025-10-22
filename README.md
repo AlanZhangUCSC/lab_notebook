@@ -1773,7 +1773,7 @@ samples of SARS 20K haplotypes in the `data_sars_8M/` dir. Anyway, regenereting 
 I wrote several node scoring schemes for selecting probable nodes.
 
 ```
-sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_small_trees.sh \
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_20K.sh \
   /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out \
   /private/groups/corbettlab/alan/panmap/ \
   /private/groups/corbettlab/alan/panmap/panmans/sars_optimized.panman \
@@ -1800,4 +1800,44 @@ days making them fast enough to my satisfaction.
 
 Hmmm.. It seems like the penalty of `1/epp^2`, which is used in WEPP, might be too aggressive. I tried `1/epp` and it
 actually doesn't look too bad. I will send this to phoenix and do a couple rounds of testing.
+
+## 10/22/2025
+
+### processing nodeScores output
+
+Use `grep_true.sh` to view the node score ranking of an output `nodeScores.tsv` file.
+
+```
+cd /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark && \
+bash grep_true.sh node_scores_out/sars_optimized_amplicon_10_0_0_1500000_1.nodeScores.tsv data_sars_20K/
+```
+
+Then run it on all the outputs
+
+```
+cd /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark && \
+bash grep_true_all.sh node_scores_out/ > node_scores_ranks.txt
+```
+
+### Genereating data for mixed HIV samples
+
+Only generating shotgun sequencing for now.
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_hiv \
+  /private/groups/corbettlab/alan/panmap/panmans/hiv_optimized.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/hiv_optimized.pmai
+```
+
+and testing node scoring schemes on pheonix
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_hiv_20K.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_hiv \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/hiv_optimized.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/hiv_optimized.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_hiv
+```
 

@@ -4,14 +4,14 @@
 #SBATCH --mail-user=bzhan146@ucsc.edu
 #SBATCH --mail-type=FAIL,END
 #SBATCH --nodes=1
-#SBATCH --mem=50gb
+#SBATCH --mem=30gb
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --output=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.log
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.err
-#SBATCH --partition=medium
-#SBATCH --time=04:00:00
-#SBATCH --array=0-59%10
+#SBATCH --partition=short
+#SBATCH --time=01:00:00
+#SBATCH --array=5,7,9
 
 set -x
 
@@ -26,10 +26,10 @@ mkdir -p $OUT_DIR
 
 mapfile -t combinations < <(python3 /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gencomb.py \
   --snps 0 \
-  --haplotypes 1 10 100 \
+  --haplotypes 1 10 100\
   --percent-mutated 1.0 \
-  --seq-types shotgun amplicon \
-  --num-reads 100000 1500000 \
+  --seq-types shotgun \
+  --num-reads 100000 1500000\
   --num-rep 5 | tail -n +2)
 
 read seqType numhap numsnps percentmutated numreads rep <<< "${combinations[$SLURM_ARRAY_TASK_ID]}"
