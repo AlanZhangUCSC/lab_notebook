@@ -1841,3 +1841,39 @@ sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap
   /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_hiv
 ```
 
+### Identical nodes found that far apart on the tree while their own neighbors are very different
+
+On the SARS 20K tree I found some nodes that have identical sequences but are non-neighbors, and their actual respective
+neighbors are quite different from themselves. These are not collapsed during the initial tree collapse because they are
+not neighbors.
+
+One (hopefully easy and not computationally intensive) fix would be to first sort the nodes by their raw read seed
+matches and raw maximum-placement read seed matches. Groups of nodes with identical scores are potential idenical nodes.
+I can then find their LCA and apply read score deltas to each of them to see if they have identical nodes. I hope this
+wouldn't be too computationally intensive because I expect identical score node groups would be small.
+
+I will do pairwise comparison of all collapsed leaf and internal nodes
+(including leaf node vs leaf node, leaf node vs internal node, BUT NOT internal node vs internal node)... Using
+collapsed leaf nodes to avoid comparing neighboring nodes, which are not unexpected if they were identical.
+
+Actually, there would be too many comparisons... Comparing all leaf node pairs would have `(N * (N - 1)) / 2`
+comparisons. That's 199,990,000 comparisons!
+
+I have a way to reduce the search space I will use a random node score files and first find potential identical
+groups that have identical raw read seed matches and identical raw maximum-placement read seed matches.
+
+```
+cd /private/groups/corbettlab/alan/lab_notebook/panmama/pairwise_comparison &&
+python3 search_potential_identical.py panmap.nodeScores.tsv  > potential_identical_pairs.tsv
+```
+
+```
+sbatch pairwise_comparison.sh \
+  potential_identical_pairs.tsv \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/pairwise_comparison/sars_fasta \
+  pairwise_comparison_out 
+```
+
+Pairs of potential identical nodes are evenly distributed for each task array, and distance stats printed to each task
+array's individual output. After the job is complete, I will `cat` all the outputs together.
+
