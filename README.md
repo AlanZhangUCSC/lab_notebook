@@ -1819,7 +1819,7 @@ cd /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark && \
 bash grep_true_all.sh node_scores_out/ > node_scores_ranks.txt
 ```
 
-### Genereating data for mixed HIV samples
+### Genereating data for mixed HIV and RSV samples
 
 Only generating shotgun sequencing for now.
 
@@ -1829,6 +1829,14 @@ sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata.sh
   /private/groups/corbettlab/alan/panmap/panmans/hiv_optimized.panman \
   /private/groups/corbettlab/alan/panmap/panmans/hiv_optimized.pmai
 ```
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_rsv \
+  /private/groups/corbettlab/alan/panmap/panmans/rsv_optimized.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/rsv_optimized.pmai
+```
+
 
 and testing node scoring schemes on pheonix
 
@@ -1864,16 +1872,33 @@ groups that have identical raw read seed matches and identical raw maximum-place
 
 ```
 cd /private/groups/corbettlab/alan/lab_notebook/panmama/pairwise_comparison &&
-python3 search_potential_identical.py panmap.nodeScores.tsv  > potential_identical_pairs.tsv
+python3 search_potential_identical.py panmap.nodeScores.tsv  > potential_identical_pairs_sars20k.tsv
 ```
 
 ```
 sbatch pairwise_comparison.sh \
-  potential_identical_pairs.tsv \
+  potential_identical_pairs_sars20k.tsv \
   /private/groups/corbettlab/alan/lab_notebook/panmama/pairwise_comparison/sars_fasta \
-  pairwise_comparison_out 
+  pairwise_comparison_out_sars20k
 ```
 
-Pairs of potential identical nodes are evenly distributed for each task array, and distance stats printed to each task
-array's individual output. After the job is complete, I will `cat` all the outputs together.
+Pairs of potential identical nodes are evenly distributed for each task array, and distance stats are printed to each
+task array's individual output. After the job is complete, I will `cat` all the outputs together.
+
+## 10/23/2025
+
+All the pairwise comparisons are complete and I concatenated each task array's output to a final all_comparisons.tsv
+
+```
+cd /private/groups/corbettlab/alan/lab_notebook/panmama/pairwise_comparison &&
+python3 get_identical_groups.py pairwise_comparison_out_sars20k/all_comparisons.tsv > sars_20k_identical_group_indices.tsv
+```
+
+It outputs a tsv file where first column is the sequence ids and the second column is the identical group ids. For now,
+I skipped over groups containing only internal nodes. Nodes are considered identical if their snps, snps_ambiguous, gaps,
+and gaps_edge_corrected are all 0 (this can be modified to be more lenient, such as allowing snps_ambiguous or gaps as
+long as gaps_edge_corrected is 0).
+
+I did find many groups of identical leaf nodes on the SARS 20K tree. I also did the same for RSV 4K and HIV 20K. RSV 4K
+has much less while HIV 20K actually has a lot more.
 

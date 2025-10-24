@@ -9,9 +9,9 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --output=/private/groups/corbettlab/alan/lab_notebook/panmama/pairwise_comparison/logs/%x.%A.%a.%j.log
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/pairwise_comparison/logs/%x.%A.%a.%j.err
-#SBATCH --partition=short
-#SBATCH --time=01:00:00
-#SBATCH --array=0-30
+#SBATCH --partition=medium
+#SBATCH --time=4:00:00
+#SBATCH --array=0-50
 
 set -x
 pairs_file=$1
@@ -48,8 +48,8 @@ fi
 
 for ((i=start_idx; i<end_idx; i++)); do
   IFS=$'\t' read -r seq1 seq2 <<< "${pairs[$i]}"
-  seq1fasta_prefix=$(echo $seq1 | tr '\/\-\.\|' '____')
-  seq2fasta_prefix=$(echo $seq2 | tr '\/\-\.\|' '____')
+  seq1fasta_prefix=$(echo $seq1 | tr '\/\-\.\|\?' '_____')
+  seq2fasta_prefix=$(echo $seq2 | tr '\/\-\.\|\?' '_____')
   fasta1path="${data_dir}/${seq1fasta_prefix}.unaligned.fasta"
   fasta2path="${data_dir}/${seq2fasta_prefix}.unaligned.fasta"
   if [ ! -f "$fasta1path" ] || [ ! -f "$fasta2path" ]; then

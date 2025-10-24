@@ -11,7 +11,7 @@
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.err
 #SBATCH --partition=short
 #SBATCH --time=01:00:00
-#SBATCH --array=5,7,9
+#SBATCH --array=0-29%10
 
 set -x
 
