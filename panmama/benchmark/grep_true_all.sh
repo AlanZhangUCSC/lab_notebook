@@ -22,5 +22,9 @@ for file in $files_to_process; do
     bash /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/grep_true.sh \
     "$file" \
     "/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_hiv"
+  elif [[ "$filename" == rsv_optimized* ]]; then
+    bash /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/grep_true.sh \
+    "$file" \
+    "/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_rsv"
   fi
 done

@@ -4,17 +4,16 @@
 #SBATCH --mail-user=bzhan146@ucsc.edu
 #SBATCH --mail-type=FAIL,END
 #SBATCH --nodes=1
-#SBATCH --mem=50gb
+#SBATCH --mem=300gb
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 #SBATCH --output=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.log
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.err
 #SBATCH --partition=medium
-#SBATCH --time=02:00:00
-#SBATCH --array=10,14,18,34,36,38,50,52,56,58,72,76,78
+#SBATCH --time=04:00:00
+#SBATCH --array=0-59%5
 
-
-#0-119%10
+# task array 0-29
 
 set -x
 
@@ -34,7 +33,7 @@ mapfile -t combinations < <(python3 /private/groups/corbettlab/alan/lab_notebook
   --snps 0 \
   --haplotypes 1 5 10 \
   --percent-mutated 1.0 \
-  --seq-types shotgun amplicon \
+  --seq-types amplicon \
   --num-reads 100000 1500000 \
   --num-rep 5 | tail -n +2)
 
@@ -134,8 +133,3 @@ else
                   --cpus 32"
   fi
 fi
-
-
-
-
-

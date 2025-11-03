@@ -1902,3 +1902,154 @@ long as gaps_edge_corrected is 0).
 I did find many groups of identical leaf nodes on the SARS 20K tree. I also did the same for RSV 4K and HIV 20K. RSV 4K
 has much less while HIV 20K actually has a lot more.
 
+## 10/28/2025
+
+I will simulate SARS data that are more realistic. Before I had randomly selected 100 nodes from the tree.
+Realistically, wastewater data should contain many similar haplotypes. So I'm going to selected random clusters of nodes
+to simulate reads from.
+
+Using `panmap` commmit `c0aeb3a631aa0ab9a1dfb2d149d6d6362a316c58` to selected the random clusters of nodes.
+
+For each cluster, I randomly select a node then use Dijkstra's algorithm to selected its closet N neighbors. Not sure
+if I should use weighted branch (and how to weights the branch length) or not but using branch length weighted by the
+number of k-min-mer updates for simlicity for now.
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata_clustered_nodes.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai
+```
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata_clustered_nodes.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai
+```
+
+What to do tomorrow:
+  - Check on read simulation. Resubmit jobs if needed
+  - Try out how the new read samples looks for node selection
+  - Keep thinking of new ways to select probable nodes
+
+
+## 10/30/2025
+
+Results look much better using reads simulated from clusters of nodes. On the sars_20K tree, I was able to select 95%
+to 100% of the true nodes from which the reads are simulated from, for both shotgun and amplicon reads. However, it
+doesn't look very good on the 8M tree, because for a random sample I looked at, only 9 out of 50 of the true nodes were
+selected. Nevertheless, I will do a formal evaluation with replicates on phoenix.
+
+I also deviced another scoring method to use seed weights instead of read weights, where a seed weight is proportional 
+to its rarity on the the tree, similar to the rarity of a read's parsimony placement. By the first look of it, it's not
+bad but also not as good as the read weighted scoring method on the 20K tree. I will also include this as part of the 
+evaluation described above.
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_20K.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars20K \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered
+```
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_8M.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars8M \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered
+```
+
+## 10/31/2025
+
+### Seed-weighted node scores update is too slow on the 8M tree
+
+It seems like the node seed scores update step was taking too long on the 8M tree. All of the jobs for the seed weighted
+node scoring scheme ran out of time. I will make it faster. 
+
+
+### Seed-weighted node scores performed better than I thought
+
+I was wrong about seed-weighted node scoring on [10/30/2025](#10302025). After doing a formal evaluation, it actually
+performed better than read-weighted node scoring in more cases than not.
+
+```
+python3 eval_node_scores.py node_scores_out_sars20K/ > node_scores_out_sars20K_all.tsv
+(head -n1 node_scores_out_sars20K_all.tsv && tail -n+2 node_scores_out_sars20K_all.tsv | sort -t '_'  -k2,2n -k6,6n -k5,5n -k 1,1) > tmp
+mv tmp node_scores_out_sars20K_all.tsv
+```
+
+Out of 60 simulated cases:
+- 15 cases of 100,000 shotgun reads
+  - equal: 7
+  - seed-weight: 3
+  - read-weight: 5
+- 15 cases of 1,500,000 shotgun reads
+  - equal: 6
+  - seed-weight: 7
+  - read-weight: 2
+- 15 cases of 100,000 amplicon reads
+  - equal: 2
+  - seed-weight: 8
+  - read-weight: 5
+- 15 cases of 1,500,000 amplicon reads
+  - equal: 8
+  - seed-weight: 5
+  - read-weight: 2
+
+
+
+### Simulating perfect reads
+
+I think I will also simulate some **PERFECT** reads to see how PCR and sequencing errors affect the scoring and node
+selection. If I get much better node selection on error-free reads, I will spend a little more time on identifying and
+removing likely errors.
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata_clustered_nodes_perfect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai
+```
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata_clustered_nodes_perfect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai
+```
+
+### Regarding my trouble with the SARS 8M
+
+It seems like the SARS 8M tree has some fundamental limitaitons in terms of its phylogenetic correctness. This arises
+primarily due to edge sequences. Two very similar genomes (a few SNPs apart) can be positioned very far apart on the 
+tree when one genome includes edges in its assembly while the other does not. Edge sequences can alse create more seed
+hits for genomes that include them. Relying on seed hits, per our method, can also have reduced specificity.
+
+In terms of what to do next. I think I will do some **final testing** on the 8M tree to see if perfect reads without any
+sequencing or PCR errors can improve the node selection performance. If it does, then I know it's primarily due to 
+sequencing or PCR errors that create false parsimonious matches, which jack up the node scores of other false nodes to 
+be selected over the true nodes.
+
+### What to focus on instead
+
+After talking with Russ. I will instead start focusing on more divergent genomes, such as HIV and bacterial genomes
+(TB? etc.). We may also need to build our own panMANs of other divergent pathogen species.
+
+To select out relevent reads from shotgun sequencing, use Kraken or discard reads without significant hits during read
+scoring in panMAMA.
+
+### Plans for next day
+
+**Last bit of attemp/investigation on 8M tree**
+- [ ] Finish the new faster seed-weighted node score update.
+- [ ] Run node selection on error-free reads.
+
+**More divergent tree**
+- [ ] Find SARS/HIV/etc. isolate samples and create artificial mixtures to test for demixing and genome deconvolution
+- [ ] Find real mixed samples for divergent genomes, such as HIV and TB
+- [ ] Build our own panMANs if necessary
