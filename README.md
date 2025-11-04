@@ -2043,13 +2043,66 @@ After talking with Russ. I will instead start focusing on more divergent genomes
 To select out relevent reads from shotgun sequencing, use Kraken or discard reads without significant hits during read
 scoring in panMAMA.
 
-### Plans for next day
+
+
+## 11/3/2025
+
+### To-do
 
 **Last bit of attemp/investigation on 8M tree**
-- [ ] Finish the new faster seed-weighted node score update.
-- [ ] Run node selection on error-free reads.
+- [x] Finish the new faster seed-weighted node score update.
+- [x] Run node selection on error-free reads.
+- [ ] Evaluate the results
 
 **More divergent tree**
 - [ ] Find SARS/HIV/etc. isolate samples and create artificial mixtures to test for demixing and genome deconvolution
 - [ ] Find real mixed samples for divergent genomes, such as HIV and TB
 - [ ] Build our own panMANs if necessary
+
+### Re-running node scores with fast, debugged seed-weighted node scres
+
+I just implemented a much faster way to score seed-weighted scores. I also found a bug in the original code so I will
+rerun the node scores for all the simualted samples.
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_20K.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars20K \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered
+```
+job id: `21214699` `21217044`
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_8M.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars8M \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered
+```
+job id: `21214720`
+
+Also running with perfect samples
+
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_20K_perfect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars20K \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered
+```
+job id: `21215120` `21217046`
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_8M_perfect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars8M \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered
+```
+job id: `21215142`

@@ -46,7 +46,7 @@ output_prefix=${prefix}
 
 if [[ $score_scheme -eq 0 ]]; then
   if [[ "$seqType" == "amplicon" ]]; then
-    readpath="${prefix}.trimmed.fastq"
+    readpath="${prefix}_perfect.trimmed.fastq"
     docker run --rm \
       -v "$(realpath $PANMAP_PATH):/panmap" \
       -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
@@ -60,13 +60,13 @@ if [[ $score_scheme -eq 0 ]]; then
                   /panmans/$(basename $PANMAN_PATH) \
                   /data/$readpath \
                   -m /pmais/$(basename $PMAI_PATH) \
-                  --prefix /output/$output_prefix \
+                  --prefix /output/${output_prefix}_perfect \
                   --true-abundance /data/${prefix}.abundance.txt \
                   --no-progress \
                   --cpus 32"
   elif [[ "$seqType" == "shotgun" ]]; then
-    readpath1="${prefix}_R1.fastq"
-    readpath2="${prefix}_R2.fastq"
+    readpath1="${prefix}_perfect_R1.fastq"
+    readpath2="${prefix}_perfect_R2.fastq"
     docker run --rm \
       -v "$(realpath $PANMAP_PATH):/panmap" \
       -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
@@ -81,14 +81,14 @@ if [[ $score_scheme -eq 0 ]]; then
                   /data/$readpath1 \
                   /data/$readpath2 \
                   -m /pmais/$(basename $PMAI_PATH) \
-                  --prefix /output/$output_prefix \
+                  --prefix /output/${output_prefix}_perfect \
                   --true-abundance /data/${prefix}.abundance.txt \
                   --no-progress \
                   --cpus 32"
   fi
 else
   if [[ "$seqType" == "amplicon" ]]; then
-    readpath="${prefix}.trimmed.fastq"
+    readpath="${prefix}_perfect.trimmed.fastq"
     docker run --rm \
       -v "$(realpath $PANMAP_PATH):/panmap" \
       -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
@@ -102,14 +102,14 @@ else
                   /panmans/$(basename $PANMAN_PATH) \
                   /data/$readpath \
                   -m /pmais/$(basename $PMAI_PATH) \
-                  --prefix /output/${output_prefix}.seedWeights \
+                  --prefix /output/${output_prefix}.seedWeights_perfect \
                   --true-abundance /data/${prefix}.abundance.txt \
                   --no-progress \
                   --seed-scores \
                   --cpus 32"
   elif [[ "$seqType" == "shotgun" ]]; then
-    readpath1="${prefix}_R1.fastq"
-    readpath2="${prefix}_R2.fastq"
+    readpath1="${prefix}_perfect_R1.fastq"
+    readpath2="${prefix}_perfect_R2.fastq"
     docker run --rm \
       -v "$(realpath $PANMAP_PATH):/panmap" \
       -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
@@ -124,7 +124,7 @@ else
                   /data/$readpath1 \
                   /data/$readpath2 \
                   -m /pmais/$(basename $PMAI_PATH) \
-                  --prefix /output/${output_prefix}.seedWeights \
+                  --prefix /output/${output_prefix}.seedWeights_perfect \
                   --true-abundance /data/${prefix}.abundance.txt \
                   --no-progress \
                   --seed-scores \

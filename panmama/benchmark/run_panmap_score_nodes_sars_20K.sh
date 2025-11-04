@@ -4,17 +4,15 @@
 #SBATCH --mail-user=bzhan146@ucsc.edu
 #SBATCH --mail-type=FAIL,END
 #SBATCH --nodes=1
-#SBATCH --mem=50gb
+#SBATCH --mem=30gb
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 #SBATCH --output=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.log
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.err
 #SBATCH --partition=medium
-#SBATCH --time=02:00:00
-#SBATCH --array=10,14,18,34,36,38,50,52,56,58,72,76,78
+#SBATCH --time=04:00:00
+#SBATCH --array=10,12,14,16,18,20,22,28,30,32,34,36,38,40,42,50,52,54,56,58,78,90,92,94,110,114
 
-
-#0-119%10
 
 set -x
 

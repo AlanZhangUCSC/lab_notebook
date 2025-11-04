@@ -4,14 +4,15 @@
 #SBATCH --mail-user=bzhan146@ucsc.edu
 #SBATCH --mail-type=FAIL,END
 #SBATCH --nodes=1
-#SBATCH --mem=300gb
+#SBATCH --mem=30gb
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=32
+#SBATCH --cpus-per-task=16
 #SBATCH --output=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.log
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.err
 #SBATCH --partition=medium
 #SBATCH --time=04:00:00
-#SBATCH --array=0-59%5
+#SBATCH --array=10,12,14,30,34,38,58,92,94,96,110,112,114,116,118
+
 
 set -x
 
@@ -31,7 +32,7 @@ mapfile -t combinations < <(python3 /private/groups/corbettlab/alan/lab_notebook
   --snps 0 \
   --haplotypes 1 5 10 \
   --percent-mutated 1.0 \
-  --seq-types amplicon \
+  --seq-types shotgun amplicon \
   --num-reads 100000 1500000 \
   --num-rep 5 | tail -n +2)
 
@@ -46,7 +47,7 @@ output_prefix=${prefix}
 
 if [[ $score_scheme -eq 0 ]]; then
   if [[ "$seqType" == "amplicon" ]]; then
-    readpath="${prefix}.trimmed.fastq"
+    readpath="${prefix}_perfect.trimmed.fastq"
     docker run --rm \
       -v "$(realpath $PANMAP_PATH):/panmap" \
       -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
@@ -60,13 +61,13 @@ if [[ $score_scheme -eq 0 ]]; then
                   /panmans/$(basename $PANMAN_PATH) \
                   /data/$readpath \
                   -m /pmais/$(basename $PMAI_PATH) \
-                  --prefix /output/$output_prefix \
+                  --prefix /output/${output_prefix}_perfect \
                   --true-abundance /data/${prefix}.abundance.txt \
                   --no-progress \
-                  --cpus 32"
+                  --cpus 16"
   elif [[ "$seqType" == "shotgun" ]]; then
-    readpath1="${prefix}_R1.fastq"
-    readpath2="${prefix}_R2.fastq"
+    readpath1="${prefix}_perfect_R1.fastq"
+    readpath2="${prefix}_perfect_R2.fastq"
     docker run --rm \
       -v "$(realpath $PANMAP_PATH):/panmap" \
       -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
@@ -81,14 +82,14 @@ if [[ $score_scheme -eq 0 ]]; then
                   /data/$readpath1 \
                   /data/$readpath2 \
                   -m /pmais/$(basename $PMAI_PATH) \
-                  --prefix /output/$output_prefix \
+                  --prefix /output/${output_prefix}_perfect \
                   --true-abundance /data/${prefix}.abundance.txt \
                   --no-progress \
-                  --cpus 32"
+                  --cpus 16"
   fi
 else
   if [[ "$seqType" == "amplicon" ]]; then
-    readpath="${prefix}.trimmed.fastq"
+    readpath="${prefix}_perfect.trimmed.fastq"
     docker run --rm \
       -v "$(realpath $PANMAP_PATH):/panmap" \
       -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
@@ -102,14 +103,14 @@ else
                   /panmans/$(basename $PANMAN_PATH) \
                   /data/$readpath \
                   -m /pmais/$(basename $PMAI_PATH) \
-                  --prefix /output/${output_prefix}.seedWeights \
+                  --prefix /output/${output_prefix}.seedWeights_perfect \
                   --true-abundance /data/${prefix}.abundance.txt \
                   --no-progress \
                   --seed-scores \
-                  --cpus 32"
+                  --cpus 16"
   elif [[ "$seqType" == "shotgun" ]]; then
-    readpath1="${prefix}_R1.fastq"
-    readpath2="${prefix}_R2.fastq"
+    readpath1="${prefix}_perfect_R1.fastq"
+    readpath2="${prefix}_perfect_R2.fastq"
     docker run --rm \
       -v "$(realpath $PANMAP_PATH):/panmap" \
       -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
@@ -124,10 +125,15 @@ else
                   /data/$readpath1 \
                   /data/$readpath2 \
                   -m /pmais/$(basename $PMAI_PATH) \
-                  --prefix /output/${output_prefix}.seedWeights \
+                  --prefix /output/${output_prefix}.seedWeights_perfect \
                   --true-abundance /data/${prefix}.abundance.txt \
                   --no-progress \
                   --seed-scores \
-                  --cpus 32"
+                  --cpus 16"
   fi
 fi
+
+
+
+
+
