@@ -4,7 +4,9 @@ This notebook will track the progress of my work in the lab.
 
 ## 2025
 
-[Jan](#1302025) &nbsp; [Feb](#212025) &nbsp; [Mar](#392025) &nbsp; [Sep](#9192025) &nbsp; [Oct](#1012025)
+[Jan](#1302025) &nbsp; [Feb](#212025) &nbsp; [Mar](#392025) &nbsp; [Sep](#9192025) &nbsp; [Oct](#1012025) &nbsp;
+
+[Nov](#1132025)
 
 ## 1/30/2025
 
