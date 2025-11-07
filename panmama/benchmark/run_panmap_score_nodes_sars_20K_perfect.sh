@@ -11,7 +11,7 @@
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.err
 #SBATCH --partition=medium
 #SBATCH --time=04:00:00
-#SBATCH --array=10,12,14,30,34,38,58,92,94,96,110,112,114,116,118
+#SBATCH --array=0-59%10
 
 
 set -x
@@ -32,7 +32,7 @@ mapfile -t combinations < <(python3 /private/groups/corbettlab/alan/lab_notebook
   --snps 0 \
   --haplotypes 1 5 10 \
   --percent-mutated 1.0 \
-  --seq-types shotgun amplicon \
+  --seq-types  amplicon \
   --num-reads 100000 1500000 \
   --num-rep 5 | tail -n +2)
 

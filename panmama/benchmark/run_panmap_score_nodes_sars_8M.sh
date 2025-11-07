@@ -11,8 +11,10 @@
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.err
 #SBATCH --partition=medium
 #SBATCH --time=04:00:00
-#SBATCH --array=0-59%5
+#SBATCH --array=14
 
+
+# 0-59%5
 set -x
 
 OUT_DIR=$1

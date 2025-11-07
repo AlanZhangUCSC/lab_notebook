@@ -211,7 +211,23 @@ cluster_sizes_string="${cluster_sizes[@]}"
 
 abundance_file=${OUT_PREFIX}.abundance.txt
 
-OUT_PREFIX=${OUT_PREFIX}_perfect
+
+# abundance_file=${OUT_PREFIX}.abundance.txt
+
+# OUT_PREFIX=${OUT_PREFIX}_perfect
+
+# random_nodes_file=${OUT_PREFIX}.randomNodeIDs.txt
+# touch $random_nodes_file
+
+
+OUT_DIR=$(dirname "$OUT_PREFIX")
+BASE_DIR=$(basename "$OUT_DIR")
+PREFIX_BASE=$(basename "$OUT_PREFIX")
+
+OUT_PREFIX="/data/tmp/${PREFIX_BASE}_perfect"
+
+
+
 
 random_nodes_file=${OUT_PREFIX}.randomNodeIDs.txt
 touch $random_nodes_file
@@ -388,6 +404,8 @@ for fasta_file in "${genomes_files[@]}"; do
   rm $fasta_file
 done
 rm $random_nodes_file
+
+
 
 # output files:
 # shotgun: ${OUT_PREFIX}_R1.fastq, ${OUT_PREFIX}_R2.fastq ${OUT_PREFIX}.mutation_info.txt ${OUT_PREFIX}.abundance.txt

@@ -2084,7 +2084,7 @@ sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap
   /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai \
   /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered
 ```
-job id: `21214720`
+job id: `21214720` `21217989`
 
 Also running with perfect samples
 
@@ -2108,3 +2108,101 @@ sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap
   /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered
 ```
 job id: `21215142`
+
+## 11/4/2025
+
+### To-do
+
+**Last bit of attemp/investigation on 8M tree**
+- [x] Run node selection on error-free reads.
+- [ ] Evaluate the results
+
+**More divergent tree**
+- [ ] Find SARS/HIV/etc. isolate samples and create artificial mixtures to test for demixing and genome deconvolution
+- [ ] Find real mixed samples for divergent genomes, such as HIV and TB
+- [ ] Build our own panMANs if necessary
+
+### Rerunning error-free reads
+
+It doesn't seem like the amplicon reads were error-free. Gonna take a look rn.
+
+Yup, just adding `--errfree` in `art_runner.py` is not enough. I needed to convert the error-free SAM ouput from `art`
+to fastqs.
+
+Rerunning scripts to generate real error free amplicon reads.
+
+```
+sbatch \
+  --mem=30000 \
+  --cpus-per-task=8 \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata_clustered_nodes_perfect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai
+```
+job id:  `21225800`
+
+```
+sbatch \
+  --mem=60000 \
+  --cpus-per-task=8 \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata_clustered_nodes_perfect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai
+```
+job id: `21226337`
+
+
+And rerunning panMAMA with the perfect reads
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_20K_perfect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars20K \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered
+```
+job id: `21226880`
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_8M_perfect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars8M \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered
+```
+job id: `21226921` `21228336`
+
+### Searching real samples
+
+#### SARS
+
+I think I will use the 10 SARS samples Nico found.
+
+#### HIV
+
+Here are a list of potential samples (to be updated)
+
+| Project/Sample ID | Strategy | Layout | #Samples | Data/Paper link |
+| ----------------- | -------- | ------ | -------- | ---------- |
+| PRJNA1118440 | HIV-1 Probe-capture WGS | paired | 82 | [Coldbeck-Shackley et al.](https://pubmed.ncbi.nlm.nih.gov/38924832/) |
+| PRJNA644953 | HIV-1 partial pol gene (Protease, Reverse Transcriptase, and Integrase) RT-PCR | single | 99 | [data](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA644953) | 
+
+There's not many data available for HIV-2
+
+
+## 11/6/2025
+
+I spent the majority of my time yesterday preparing for a BME seminar talk.
+
+Perfect amplicon reads (without sequencing/PCR errors) actually did quite well during node selection step. So I do think
+I will spend a bit more time handling amplicon errors.
+
+I used Claude to write a watered-down python version if `ivar trim` to output a tsv file, in which the first column is
+the read name and second column is the name of the primer that it's assigned to.
+
+During query initialization step, I will first process reads by groups of their primer template and mask probable errors
+using the depth of the primer stack as reference.
