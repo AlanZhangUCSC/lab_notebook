@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=gen-data
+#SBATCH --job-name=run-panmap
 #SBATCH --mail-user=bzhan146@ucsc.edu
 #SBATCH --mail-type=FAIL,END
 #SBATCH --nodes=1
@@ -48,6 +48,7 @@ output_prefix=${prefix}
 if [[ $score_scheme -eq 0 ]]; then
   if [[ "$seqType" == "amplicon" ]]; then
     readpath="${prefix}.trimmed.fastq"
+    stackpath="${prefix}.amplicon_stacks.tsv"
     docker run --rm \
       -v "$(realpath $PANMAP_PATH):/panmap" \
       -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
@@ -61,8 +62,10 @@ if [[ $score_scheme -eq 0 ]]; then
                   /panmans/$(basename $PANMAN_PATH) \
                   /data/$readpath \
                   -m /pmais/$(basename $PMAI_PATH) \
-                  --prefix /output/$output_prefix \
+                  --prefix /output/${output_prefix}.err_detect \
                   --true-abundance /data/${prefix}.abundance.txt \
+                  --amplicon-depth /data/$stackpath \
+                  --mask-seeds-relative-frequency 0.005 \
                   --no-progress \
                   --cpus 32"
   elif [[ "$seqType" == "shotgun" ]]; then
@@ -82,7 +85,7 @@ if [[ $score_scheme -eq 0 ]]; then
                   /data/$readpath1 \
                   /data/$readpath2 \
                   -m /pmais/$(basename $PMAI_PATH) \
-                  --prefix /output/$output_prefix \
+                  --prefix /output/${output_prefix}.err_detect \
                   --true-abundance /data/${prefix}.abundance.txt \
                   --no-progress \
                   --cpus 32"
@@ -90,6 +93,7 @@ if [[ $score_scheme -eq 0 ]]; then
 else
   if [[ "$seqType" == "amplicon" ]]; then
     readpath="${prefix}.trimmed.fastq"
+    stackpath="${prefix}.amplicon_stacks.tsv"
     docker run --rm \
       -v "$(realpath $PANMAP_PATH):/panmap" \
       -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
@@ -103,8 +107,10 @@ else
                   /panmans/$(basename $PANMAN_PATH) \
                   /data/$readpath \
                   -m /pmais/$(basename $PMAI_PATH) \
-                  --prefix /output/${output_prefix}.seedWeights \
+                  --prefix /output/${output_prefix}.seedWeights.err_detect \
                   --true-abundance /data/${prefix}.abundance.txt \
+                  --amplicon-depth /data/$stackpath \
+                  --mask-seeds-relative-frequency 0.005 \
                   --no-progress \
                   --seed-scores \
                   --cpus 32"
@@ -125,7 +131,7 @@ else
                   /data/$readpath1 \
                   /data/$readpath2 \
                   -m /pmais/$(basename $PMAI_PATH) \
-                  --prefix /output/${output_prefix}.seedWeights \
+                  --prefix /output/${output_prefix}.seedWeights.err_detect \
                   --true-abundance /data/${prefix}.abundance.txt \
                   --no-progress \
                   --seed-scores \
