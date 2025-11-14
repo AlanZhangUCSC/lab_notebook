@@ -2194,9 +2194,11 @@ Here are a list of potential samples (to be updated)
 There's not many data available for HIV-2
 
 
-## 11/6/2025
+## 11/6/2025 - 11/7/2025
 
-I spent the majority of my time yesterday preparing for a BME seminar talk.
+### I spent the majority of my time yesterday (11/5/2025) preparing for a BME seminar talk.
+
+### Amplicon sample error detection using primer-stack size
 
 Perfect amplicon reads (without sequencing/PCR errors) actually did quite well during node selection step. So I do think
 I will spend a bit more time handling amplicon errors.
@@ -2206,3 +2208,156 @@ the read name and second column is the name of the primer that it's assigned to.
 
 During query initialization step, I will first process reads by groups of their primer template and mask probable errors
 using the depth of the primer stack as reference.
+
+```
+sbatch \
+  --mem=30000 \
+  --cpus-per-task=8 \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata_clustered_nodes_amplicon_stack.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai
+```
+job id:  `21271306`
+
+```
+sbatch \
+  --mem=60000 \
+  --cpus-per-task=8 \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/gendata_clustered_nodes_amplicon_stack.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai
+```
+job id: `21326790`
+
+### Running panMAMA with amplicon error removal
+
+For fair comparison, I will also rerun panmap on the same newly simulated datasets with and without error removal:
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_20K.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars20K \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered
+```
+job id: `21327409`
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_8M.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars8M \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered
+```
+job id: `21327420`
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_20K_error_detect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars20K \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered
+```
+job id: `21368167`
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_8M_error_detect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars8M \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered
+```
+job id: `21368178` `21368977`
+
+## 11/12/2025
+
+### Read-seed-weighted node scoring function
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_20K.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars20K \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered
+```
+job id: `21476247`
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_8M.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars8M \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered
+```
+job id: `21476259`
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_20K_error_detect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars20K \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered
+```
+job id: `21476275`
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_8M_error_detect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars8M \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered
+```
+job id: `21476287` `21492432` `21497204`
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_20K_perfect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars20K \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_20000_twilight_dipper.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_20K_clustered
+```
+job id: `21476302`
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/run_panmap_score_nodes_sars_8M_perfect.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/node_scores_out_sars8M \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.panman \
+  /private/groups/corbettlab/alan/panmap/panmans/sars_8M.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/data_sars_8M_clustered
+```
+job id: `21476314`
+
+## 11/13/2025
+
+So read-seed-weighted scoring method didn't work out well. While it performed better than read-weighted method on the
+SARS 20K tree, it's comparably worse on the SARS 8M tree. During my discussion with Russ and Alex, weighting the reads
+additionally with phylogenetic information (similar to autolin... information theory... how much phylogenetic
+information does a read's parsimony tells me). I did think about something like this but decided not to pursue because
+the trees are not quite good enough.
+
+Wait... Now thinking back on it, since SARS 8M tree was built using UShER MAT, the tree topology might be good enough to
+do this.
+
+### Quick plan on what to do next
+
+- [ ] Investigate how the phylogeny of nodes that reads are parsimonious to on the 8M tree
+  - [ ] If it looks good: pursue phylogenetic information approach mentioned above
+- [ ] Restore EM function on panMAMA
+- [ ] Test on more divergent genomes!
+  - [ ] Simulate RSV amplicon reads and compare panMAMA to WEPP
+    - [ ] Figure out from `art_illumina` page how to simulate amplicon reads
+    - [ ] Write a script to simulate amplicon reads for RSV and other more divergent genomes
+  - [ ] Modify WEPP to also use shotgun reads
+  - [ ] Test if WEPP can run with HIV shotgun reads and compare to panMAMA
