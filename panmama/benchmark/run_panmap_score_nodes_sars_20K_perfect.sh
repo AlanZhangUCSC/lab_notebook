@@ -6,12 +6,12 @@
 #SBATCH --nodes=1
 #SBATCH --mem=30gb
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=32
 #SBATCH --output=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.log
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/logs/%x.%A.%a.%j.err
 #SBATCH --partition=medium
 #SBATCH --time=04:00:00
-#SBATCH --array=0-59%10
+#SBATCH --array=0-89%10
 
 
 set -x
@@ -36,8 +36,13 @@ mapfile -t combinations < <(python3 /private/groups/corbettlab/alan/lab_notebook
   --num-reads 100000 1500000 \
   --num-rep 5 | tail -n +2)
 
-combination_index=$((SLURM_ARRAY_TASK_ID / 2))
-score_scheme=$((SLURM_ARRAY_TASK_ID % 2))
+combination_index=$((SLURM_ARRAY_TASK_ID / 3))
+score_scheme=$((SLURM_ARRAY_TASK_ID % 3))
+
+# if [[ $score_scheme -ne 2 ]]; then
+#   exit 0
+# fi
+
 read seqType numhap numsnps percentmutated numreads rep <<< "${combinations[$combination_index]}"
 
 docker load -i /private/groups/corbettlab/alan/panmap/panmap-dev.tar
@@ -87,7 +92,7 @@ if [[ $score_scheme -eq 0 ]]; then
                   --no-progress \
                   --cpus 16"
   fi
-else
+elif [[ $score_scheme -eq 1 ]]; then
   if [[ "$seqType" == "amplicon" ]]; then
     readpath="${prefix}_perfect.trimmed.fastq"
     docker run --rm \
@@ -129,6 +134,50 @@ else
                   --true-abundance /data/${prefix}.abundance.txt \
                   --no-progress \
                   --seed-scores \
+                  --cpus 16"
+  fi
+else
+  if [[ "$seqType" == "amplicon" ]]; then
+    readpath="${prefix}_perfect.trimmed.fastq"
+    docker run --rm \
+      -v "$(realpath $PANMAP_PATH):/panmap" \
+      -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
+      -v "$(realpath $(dirname $PMAI_PATH)):/pmais" \
+      -v "$(realpath $DATA_DIR):/data" \
+      -v "$(realpath $OUT_DIR):/output" \
+      -w /panmap \
+      --user "$(id -u):$(id -g)" \
+      panmap-dev \
+      bash -c "/panmap/build/bin/panmap \
+                  /panmans/$(basename $PANMAN_PATH) \
+                  /data/$readpath \
+                  -m /pmais/$(basename $PMAI_PATH) \
+                  --prefix /output/${output_prefix}.seedWeights_perfect \
+                  --true-abundance /data/${prefix}.abundance.txt \
+                  --no-progress \
+                  --read-seed-scores \
+                  --cpus 16"
+  elif [[ "$seqType" == "shotgun" ]]; then
+    readpath1="${prefix}_perfect_R1.fastq"
+    readpath2="${prefix}_perfect_R2.fastq"
+    docker run --rm \
+      -v "$(realpath $PANMAP_PATH):/panmap" \
+      -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
+      -v "$(realpath $(dirname $PMAI_PATH)):/pmais" \
+      -v "$(realpath $DATA_DIR):/data" \
+      -v "$(realpath $OUT_DIR):/output" \
+      -w /panmap \
+      --user "$(id -u):$(id -g)" \
+      panmap-dev \
+      bash -c "/panmap/build/bin/panmap \
+                  /panmans/$(basename $PANMAN_PATH) \
+                  /data/$readpath1 \
+                  /data/$readpath2 \
+                  -m /pmais/$(basename $PMAI_PATH) \
+                  --prefix /output/${output_prefix}.seedWeights_perfect \
+                  --true-abundance /data/${prefix}.abundance.txt \
+                  --no-progress \
+                  --read-seed-scores \
                   --cpus 16"
   fi
 fi
