@@ -2193,6 +2193,21 @@ Here are a list of potential samples (to be updated)
 
 There's not many data available for HIV-2
 
+### Downloading fasta sequences from ncbi
+
+Use commands below to retrieve fasta sequences from ncbi
+
+**Download a single sequence**
+
+`efetch -db nuccore -id ON284258.1 -format fasta > ON284258.1.fasta`
+
+**Download multiple sequences from a file (one accession per line)**
+
+`cat accessions.txt | efetch -db nuccore -format fasta > sequences.fasta`
+
+**Or download multiple specific accessions**
+
+`efetch -db nuccore -id ON284258.1,OL672836.1,MW580573.1 -format fasta > sequences.fasta`
 
 ## 11/6/2025 - 11/7/2025
 
@@ -2352,12 +2367,115 @@ do this.
 
 ### Quick plan on what to do next
 
-- [ ] Investigate how the phylogeny of nodes that reads are parsimonious to on the 8M tree
+- [ ] Investigate the phylogeny of nodes that reads are parsimonious to on the 8M tree
   - [ ] If it looks good: pursue phylogenetic information approach mentioned above
 - [ ] Restore EM function on panMAMA
 - [ ] Test on more divergent genomes!
   - [ ] Simulate RSV amplicon reads and compare panMAMA to WEPP
     - [ ] Figure out from `art_illumina` page how to simulate amplicon reads
     - [ ] Write a script to simulate amplicon reads for RSV and other more divergent genomes
-  - [ ] Modify WEPP to also use shotgun reads
-  - [ ] Test if WEPP can run with HIV shotgun reads and compare to panMAMA
+  - [x] Modify WEPP to also use shotgun reads
+  - [x] Test if WEPP can run with HIV shotgun reads and compare to panMAMA
+
+## 11/14/2025
+
+### Modify WEPP to also use shotgun reads
+
+After pulling the WEPP docker...
+
+Enter docker container: 
+
+`docker run -it pranavgangwar/wepp:latest` 
+
+Use modified scripts for shotgun sequencing:
+
+```
+docker run -it \
+  -v /home/alan/tools/WEPP/src/WEPP/qc_preprocess.py:/WEPP/src/WEPP/qc_preprocess.py \
+  -v /home/alan/tools/WEPP/config/config.yaml:/WEPP/config/config.yaml \
+  -v /home/alan/tools/WEPP/workflow/rules/qc.smk:/WEPP/workflow/rules/qc.smk \
+  -v /home/alan/tools/WEPP/shotgun_reads:/data \
+  -v /scratch1/alan/hiv_usher:/hiv_usher \
+  pranavgangwar/wepp:latest
+```
+
+Run with `SHOTGUN=True` tag inside container:
+
+```
+snakemake --config DIR=shotgun_reads FILE_PREFIX=test_run PRIMER_BED=RSVA_all_primers_best_hits.bed TREE=hiv_K03455.pb REF=K03455.fasta  CLADE_IDX=-1 SHOTGUN=True --cores 32 --use-conda
+```
+
+### Evaluation WEPP and MAMA's performance on HIV shotgun reads
+
+```
+python3 calculate_distance_score.py \
+  --tree-in test/hiv_K03455.pb \
+  --true-in test/true_abundance.tsv \
+  --estm-in test/estm_abundance_wepp.tsv \
+  --tool WEPP \
+  --fasta-dir /scratch1/alan/panmania/backup/panman/panmans/info/hiv_original/ \
+  --prefix test
+```
+
+I'm actually quite unsure about how to compare panMAMA and WEPP... It's easy if an estimated haplotype is a sampled
+haplotype because I can either do `mafft` or use the usher MAT to calculate the distance between the estimated haplotype
+and its closest true haplotype. The problem is when an estimated haplotype is an internal node because panMAN and MAT
+do not have the same internal nodes. panMAN also has the full genomic sequences of the internal nodes while MAT only has
+the SNPs with respect to the reference. So I'm not sure how to deal with gaps....
+
+I also noticed that `bte.get_haplotype()`, which "returns the complete set of mutations (haplotype) the indicated node
+has with respect to the reference," also has mutations at positions where a node has a gap with respect to the
+reference. I think that this might be due to how `bte.get_haplotype()` gets the mutations. It might accumulate
+all the branch mutations from the root the target node, and some of the branch mutations on the path are infered
+mutations on the gap coordinates of the target node. Additionally, when I place the same sample onto the tree, after 
+changing the sample ID, the new sample's mutations from `bte.get_haplotype()` don't have any mutations at the gapped
+positions.... Very weird
+
+
+## 11/15/2025 - 11/16/2025
+
+### Lab meeting presentation planner
+
+1. Remind everybody the background and purpose of panMAMA
+2. Same as the seminar talk
+3. Transition to the problems I've solved and am still solving
+    - New index building function: show a quick overview on method and a graph to show the time it takes to index each
+      genome
+    - Improve scoring time
+      - de-duplicating reads
+      - Multi-threading
+      - collapsing nodes
+      - removing seed mutations within each node
+      - fast mode
+      - remove most of the unnecessary block mutations
+    - Memory problem
+      - Even with score-annotated index, memory still seems to be a problem for sars 8M tree
+      - Use de bruijn graph to group reads with similar seeds together and store neighboring reads deltas
+    - Select probable nodes
+      - Why overlap-coefficients no long work
+      - Alternative methods
+        - WEPP method
+        - Can we make it better?
+          - seed-weighted method -> nope
+          - read-seed-weighted method -> better than seed-weighted.. but still nope
+          - what to do next?
+    - Various panMAN-related problems
+      - panGraph sucks
+        - explain what panGraph is and how panMAN uses panGraph
+          - F'd up block mutations
+            - How I some-what fixed them
+          - Identical samples are not close to each other
+            - Ways to fix them
+          - Should-be-sister nodes are not close because their genome edges are also included in the construction
+
+## 11/20/2025
+
+Lab meeting yesterday was a success.
+
+### Shift focus on HIV
+
+I just wrote a script on silverbulelt that makes it easier to run the WEPP
+
+I will run it on all the hiv samples I have on phoenix and compare the results between WEPP and panMAMA
+
+
