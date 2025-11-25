@@ -2478,4 +2478,15 @@ I just wrote a script on silverbulelt that makes it easier to run the WEPP
 
 I will run it on all the hiv samples I have on phoenix and compare the results between WEPP and panMAMA
 
+## 11/21/2025
+
+I ran all of the simualed HIV samples I have on WEPP and compared it to MAMA. Weighted Haplotype/Peak distances were
+calculated using [calculate_distance_score.py](panmama/WEPP/scripts/calculate_distance_score.py).
+
+Gathered all the measurements:
+
+```
+cd /private/groups/corbettlab/alan/lab_notebook/panmama/WEPP/WEPP_results/results
+(echo -e "hap\trep\tmama_whd\tmama_wpd\twepp_whd\twepp_wpd" && for hap in 1 2 3 5 10; do for rep in 1 2 3 4 5 6 7 8 9 10; do wepp_distances=$(tail -n+2 "hiv20000_${hap}hap-a_60000_rep${rep}/hiv_${hap}hap_rep${rep}.wepp.distance_sum.tsv" | cut -f 2,3); mama_distances=$(tail -n+2 "hiv20000_${hap}hap-a_60000_rep${rep}/hiv_${hap}hap_rep${rep}.mama.distance_sum.tsv" | cut -f 2,3);  echo -e -n "${hap}\t${rep}\t${mama_distances}\t"; echo -e "$wepp_distances"; done; done;) > ../../distances.tsv 
+```
 
