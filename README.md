@@ -2490,3 +2490,102 @@ cd /private/groups/corbettlab/alan/lab_notebook/panmama/WEPP/WEPP_results/result
 (echo -e "hap\trep\tmama_whd\tmama_wpd\twepp_whd\twepp_wpd" && for hap in 1 2 3 5 10; do for rep in 1 2 3 4 5 6 7 8 9 10; do wepp_distances=$(tail -n+2 "hiv20000_${hap}hap-a_60000_rep${rep}/hiv_${hap}hap_rep${rep}.wepp.distance_sum.tsv" | cut -f 2,3); mama_distances=$(tail -n+2 "hiv20000_${hap}hap-a_60000_rep${rep}/hiv_${hap}hap_rep${rep}.mama.distance_sum.tsv" | cut -f 2,3);  echo -e -n "${hap}\t${rep}\t${mama_distances}\t"; echo -e "$wepp_distances"; done; done;) > ../../distances.tsv 
 ```
 
+|hap|rep|mama_whd|mama_wpd|wepp_whd|wepp_wpd|
+|---|---|--------|--------|--------|--------|
+|1|1|0.000|0.000|0.000|0.000|
+|1|2|0.000|0.000|0.000|0.000|
+|1|3|0.000|0.000|0.000|0.000|
+|1|4|0.000|0.000|0.000|0.000|
+|1|5|0.000|0.000|0.000|0.000|
+|1|6|0.000|0.000|0.000|0.000|
+|1|7|0.000|0.000|154.000|154.000|
+|1|8|0.000|0.000|0.000|0.000|
+|1|9|0.000|0.000|0.000|0.000|
+|1|10|0.000|0.000|0.000|0.000|
+|2|1|0.000|0.274|0.000|0.290|
+|2|2|0.000|0.000|0.000|0.016|
+|2|3|0.000|0.000|0.000|0.855|
+|2|4|0.000|0.000|0.000|10.817|
+|2|5|0.000|0.000|0.000|0.000|
+|2|6|0.000|0.000|11.400|13.376|
+|2|7|0.000|0.000|0.000|5.442|
+|2|8|0.000|0.157|0.000|0.740|
+|2|9|0.000|0.000|0.000|0.000|
+|2|10|0.000|0.000|0.000|0.000|
+|3|1|0.000|0.000|0.000|9.486|
+|3|2|0.000|0.000|0.300|7.708|
+|3|3|0.000|0.000|11.100|13.487|
+|3|4|0.000|0.000|49.600|24.703|
+|3|5|0.000|0.109|5.700|9.067|
+|3|6|0.000|0.000|3.400|13.945|
+|3|7|0.000|0.000|0.600|38.168|
+|3|8|0.000|0.053|0.200|21.974|
+|3|9|0.000|0.000|0.000|26.607|
+|3|10|0.000|0.147|0.000|0.068|
+|5|1|0.000|0.000|0.000|37.111|
+|5|2|0.250|0.250|0.050|14.396|
+|5|3|0.000|0.000|0.000|21.012|
+|5|4|0.000|0.000|15.400|75.145|
+|5|5|0.000|0.000|4.300|45.224|
+|5|6|0.000|0.000|0.000|78.194|
+|5|7|0.000|0.000|0.000|32.938|
+|5|8|0.000|0.000|0.500|21.572|
+|5|9|0.000|0.000|0.000|14.293|
+|5|10|0.000|0.000|2.000|46.489|
+|10|1|1.800|1.754|3.150|47.646|
+|10|2|0.100|0.122|1.850|67.739|
+|10|3|0.000|0.556|3.700|68.996|
+|10|4|0.100|0.151|5.950|60.707|
+|10|5|0.000|0.000|1.200|109.556|
+|10|6|0.000|0.000|3.750|71.918|
+|10|7|0.000|0.000|0.000|81.815|
+|10|8|0.000|0.000|0.300|102.034|
+|10|9|0.050|0.133|300.900|38.395|
+|10|10|0.000|0.389|0.050|37.351|
+
+Results show that panMAMA outperforms WEPP for HIV samples, likely because HIV genomes are too divergent to be demixed 
+using SNP information alone. PanMAMA shows better performance in both the WHD and WPD metrics, which measure sensitivity 
+and specificity, respectively. The improvement is particularly pronounced for specificity.
+
+## 11/24/2025
+
+Yatish and Sumit sent us the verbetrate mito panMAT. I generated a metadata file containing samples' taxonomic. Out of
+the total 15,655 samples, there are 7,893 unique species, 854 families, and 157 orders.
+
+I visually inspected the panMAT using Taxonium and found that, while most samples cluster as expected, there are a
+non-trivial number of outliers, and several expected clades are fragmented into multiple separate clusters.
+
+1. The highlighted nodes represent order Primates. There are two separate small primate clusters that are positioned 
+distinctly from the major primate cluster. Additionally, non-human great apes are also quite far away from the human 
+samples.
+
+![primates](panmama/mito_panmat/image-2.png)
+
+(For validation, I aligned a human mitochondrial sample (J01415.2) to a pileated gibbon sample (AB504749.1) from the 
+nearest clade to the human sample and to a chimpanzee sample (D38113.1) using MAFFT. The genetic distance between human 
+and chimpanzee mitochondrial sequences is about half that between human and gibbon sequences.)
+
+2. The highlighted nodes belong to order Anura, which contains all frogs and toads. The Anura samples are distributed in 
+several distinct clusters. There are also multiple non-Anura species, such as Caecilians, reptiles, rodents, 
+interspersed within the Anura-major clades.
+
+![anura](panmama/mito_panmat/image-3.png)
+
+I then compared tree topology between the mito panMAT and the [TimeTree](https://timetree.org/). I was able to identify 
+6,231 overlapping unique  species between the two trees. After removing duplicate samples and excluding non-overlapping 
+species, I calculated a  normalized Robinson-Foulds distance of 0.302 (unweighted RF distance: 7,380; maximum RF 
+distance: 24,456).
+
+I wonder if these discrepancies are due to differences in the recorded starting positions of the circular mitochondrial 
+genome. In many MAFFT alignments I have inspected, both samples have very similar sequence length, but one sample often 
+has an extended gap sequence at the beginning of the aligned sequence while the other sample has an extended gap 
+sequence at the end, which is what you'd expect if two circular genomes are linearized at different positions. 
+
+I did a quick experiment on the human mitochondrial sample (J01415.2) and the chimpanzee sample (D38113.1) mentioned 
+above. MAFFT alignment of the original NCBI fastas showed that the two fastas differ by 1380 SNPs and 1160 gaps. I then
+manually rotated the human mitochondrial sequence by moving the region at the beginning where the chimpanzee sequence
+contains a stretch of gaps to the end of the sequence. MAFFT alignment of the rotated human fasta showed 1,456 SNPs and
+26 gaps, or ~8.6% difference, which is consistent with the [literature](https://pubmed.ncbi.nlm.nih.gov/8919866/). 
+
+I also confirmed from the v_mtdna.aln.gz file that neither human mito sample nor the chimpanzee sample were rotated for
+the construction of the panMAT.
