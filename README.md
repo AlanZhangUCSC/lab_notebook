@@ -6,7 +6,7 @@ This notebook will track the progress of my work in the lab.
 
 [Jan](#1302025) &nbsp; [Feb](#212025) &nbsp; [Mar](#392025) &nbsp; [Sep](#9192025) &nbsp; [Oct](#1012025) &nbsp;
 
-[Nov](#1132025)
+[Nov](#1132025) &nbsp; [Dec](#1212025) &nbsp;
 
 ## 1/30/2025
 
@@ -2545,7 +2545,7 @@ cd /private/groups/corbettlab/alan/lab_notebook/panmama/WEPP/WEPP_results/result
 
 Results show that panMAMA outperforms WEPP for HIV samples, likely because HIV genomes are too divergent to be demixed 
 using SNP information alone. PanMAMA shows better performance in both the WHD and WPD metrics, which measure sensitivity 
-and specificity, respectively. The improvement is particularly pronounced for specificity.
+and specificity, respectively. The improvement is particularly significant for specificity.
 
 ## 11/24/2025
 
@@ -2634,3 +2634,6 @@ I will make new to-do list for the next couple of weeks
 - [ ] Work on SAPP application
 - [ ] Look into ancient DNA read error correction
 
+## 12/1/2025
+
+I will write a skeleton slurm script that will generate combinations of indices for panMAMA
