@@ -2589,3 +2589,37 @@ contains a stretch of gaps to the end of the sequence. MAFFT alignment of the ro
 
 I also confirmed from the v_mtdna.aln.gz file that neither human mito sample nor the chimpanzee sample were rotated for
 the construction of the panMAT.
+
+## 11/25/2025
+
+### To-do
+
+- [ ] Investigate the phylogeny of nodes that reads are parsimonious to on the 8M tree
+  - [ ] If it looks good: pursue phylogenetic information approach mentioned above
+- [ ] implement syncmer only index
+- [x] ~~Restore EM function on panMAMA~~
+  - [x] ~~Modify WEPP to also use shotgun reads~~
+  - [x] ~~Test if WEPP can run with HIV shotgun reads and compare to panMAMA~~
+
+### Restore EM function on panMAMA
+
+I restored the EM function on panMAMA. For now, I will the option to either use overlap coefficients or read-weighted
+node scores to select probable nodes.
+
+## 11/26/2025
+
+### To-do
+
+- [ ] Investigate the phylogeny of nodes that reads are parsimonious to on the 8M tree
+  - [ ] If it looks good: pursue phylogenetic information approach mentioned above
+- [x] ~~implement syncmer only index~~
+- [x] ~~Restore EM function on panMAMA~~
+  - [x] ~~Modify WEPP to also use shotgun reads~~
+  - [x] ~~Test if WEPP can run with HIV shotgun reads and compare to panMAMA~~
+
+### Fixing l parameter
+
+Index building broke when I set l to 1 or 2... Due to some conceptual misunderstanding, I thought l would have to be at
+least 3, so I coded the index building function to assume l >= 3...
+
+Now index also builds correctly for l = 1 and l = 2.  l = 1 is the equivalent as implenting syncmer only index.
