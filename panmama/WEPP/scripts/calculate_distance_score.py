@@ -160,24 +160,6 @@ with open(whds_out, 'w') as whd_fh:
   for true_node, distance in whds.items():
     whd_fh.write(f'{true_node}\t{distance[0]}\t{distance[1]}\t{distance[2]}\t{distance[3]}\t{distance[4]}\n')
 
-# whds_diffs_out = args.prefix + '.wepp.whd_diffs.tsv' if args.tool == 'WEPP' else args.prefix + '.mama.whd_diffs.tsv'
-# with open(whds_diffs_out, 'w') as whd_diff_fh:
-#   whd_diff_fh.write(f'True_node\tClosest_estimate\tDiffs\n')
-#   for true_node, distance in whds.items():
-#     estm_node = distance[0]
-#     whd_diff_fh.write(f'{true_node}\t{estm_node}\t')
-#     if (distance[3] > 0):
-#       true_hap = tree.get_haplotype(true_node)
-#       estm_hap = tree.get_haplotype(estm_node)
-#       diffs = list(true_hap.symmetric_difference(estm_hap))
-#       diffs.sort(key=lambda x: int(x[1:-1]))
-#       for i in range(len(diffs)):
-#         whd_diff_fh.write(f'{diffs[i]}')
-#         if i < len(diffs) - 1: whd_diff_fh.write(',')
-#         else: whd_diff_fh.write('\n')
-#     else:
-#       whd_diff_fh.write('.\n')
-
 wpds_out = args.prefix + '.wepp.wpd.tsv' if args.tool == 'WEPP' else args.prefix + '.mama.wpd.tsv'
 with open(wpds_out, 'w') as wpd_fh:
   wpd_fh.write(f'Estimated_node\tClosest_true\tEstimated_abundance\tTrue_abundance\tDistance_to_closest\tWeighted_peak_dist\n')

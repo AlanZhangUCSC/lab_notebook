@@ -4,7 +4,7 @@ set -euo pipefail
 
 usage() {
   cat << EOF
-Usage: $0 <tree_path> <read_1> <read_2> <ref_path> <project_name> <output_prefix> <modified_WEPP_dir>
+Usage: $0 <tree_path> <read_1> <read_2> <ref_path> <project_name> <output_prefix> <modified_WEPP_dir> <output_dir>
 
 Arguments:
   tree_path          Path to phylogenetic tree file
@@ -14,15 +14,16 @@ Arguments:
   project_name       Name for this analysis project
   output_prefix      Prefix for output files
   modified_WEPP_dir  Path to modified WEPP directory
+  output_dir        Directory to store results
 
 Example:
-  $0 tree.pb reads_R1.fq.gz reads_R2.fq.gz ref.fasta my_project output ./WEPP
+  $0 tree.pb reads_R1.fq.gz reads_R2.fq.gz ref.fasta my_project output ./WEPP output_dir
 EOF
   exit 1
 }
 
-if [ $# -ne 7 ]; then
-  echo "Error: Expected 7 arguments, got $#" >&2
+if [ $# -ne 8 ]; then
+  echo "Error: Expected 8 arguments, got $#" >&2
   usage
 fi
 
@@ -33,6 +34,7 @@ ref_path="$4"
 project_name="$5"
 output_prefix="$6"
 modified_WEPP_dir="$7"
+output_dir="$8"
 
 if [ ! -f "${tree_path}" ]; then
   echo "Error: Tree file not found: ${tree_path}" >&2
@@ -59,6 +61,7 @@ if [ ! -d "${modified_WEPP_dir}" ]; then
   exit 1
 fi
 
+
 required_files=(
   "${modified_WEPP_dir}/src/WEPP/qc_preprocess.py"
   "${modified_WEPP_dir}/config/config.yaml"
@@ -78,7 +81,10 @@ read_2=$(realpath "${read_2}")
 ref_path=$(realpath "${ref_path}")
 modified_WEPP_dir=$(realpath "${modified_WEPP_dir}")
 
-mkdir -p "results"
+
+output_dir=$(realpath "${output_dir}")
+results_real_path="${output_dir}/results"
+mkdir -p "${results_real_path}"
 
 tree_path_in_docker="/input/$(basename "${tree_path}")"
 read_1_in_docker="/input/$(basename "${read_1}")"
@@ -101,7 +107,7 @@ docker run --rm \
   -v "${modified_WEPP_dir}/src/WEPP/qc_preprocess.py:/WEPP/src/WEPP/qc_preprocess.py" \
   -v "${modified_WEPP_dir}/config/config.yaml:/WEPP/config/config.yaml" \
   -v "${modified_WEPP_dir}/workflow/rules/qc.smk:/WEPP/workflow/rules/qc.smk" \
-  -v "${modified_WEPP_dir}/results:/WEPP/results" \
+  -v "${results_real_path}:/WEPP/results" \
   -v "${tree_path}:${tree_path_in_docker}:ro" \
   -v "${read_1}:${read_1_in_docker}:ro" \
   -v "${read_2}:${read_2_in_docker}:ro" \
