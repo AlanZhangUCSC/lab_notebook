@@ -2631,9 +2631,17 @@ I will make new to-do list for the next couple of weeks
 - [ ] Formalize evaluation metrics
 - [ ] Build indices with different combinations of l, k, s parameters
 - [ ] Compare accuracy of different combinations of l, k, s using the evaluation metric
+- [ ] Implement t offsets for syncmers
 - [ ] Work on SAPP application
 - [ ] Look into ancient DNA read error correction
 
 ## 12/1/2025
 
-I will write a skeleton slurm script that will generate combinations of indices for panMAMA
+
+### Build indices with different combinations of l, k, s parameters
+
+I will write a skeleton slurm script that will generate combinations of indices for panMAMA.
+
+### Implement t offsets for syncmers
+
+I have also just modified the seed sketching function to sketch syncmers with all l, k, s, t, and open values.
