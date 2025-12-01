@@ -2623,3 +2623,14 @@ Index building broke when I set l to 1 or 2... Due to some conceptual misunderst
 least 3, so I coded the index building function to assume l >= 3...
 
 Now index also builds correctly for l = 1 and l = 2.  l = 1 is the equivalent as implenting syncmer only index.
+
+## 11/30/2025
+
+I will make new to-do list for the next couple of weeks
+
+- [ ] Formalize evaluation metrics
+- [ ] Build indices with different combinations of l, k, s parameters
+- [ ] Compare accuracy of different combinations of l, k, s using the evaluation metric
+- [ ] Work on SAPP application
+- [ ] Look into ancient DNA read error correction
+
