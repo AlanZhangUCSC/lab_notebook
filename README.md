@@ -2629,7 +2629,7 @@ Now index also builds correctly for l = 1 and l = 2.  l = 1 is the equivalent as
 I will make new to-do list for the next couple of weeks
 
 - [ ] Formalize evaluation metrics
-- [ ] Build indices with different combinations of l, k, s parameters
+- [x] ~~Update seed sketching function to take in any seed parameters~~
 - [ ] Compare accuracy of different combinations of l, k, s using the evaluation metric
 - [ ] Implement t offsets for syncmers
 - [ ] Work on SAPP application
@@ -2645,3 +2645,42 @@ I will write a skeleton slurm script that will generate combinations of indices 
 ### Implement t offsets for syncmers
 
 I have also just modified the seed sketching function to sketch syncmers with all l, k, s, t, and open values.
+
+## 12/2/2025
+
+### Running panmap on simulated mito reads
+
+Simulate reads
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/gendata.sh \
+  /data/tmp/ \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/input_data/v_mtdna.panman \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/input_data/v_mtdna.pmai
+```
+
+Run panmap
+
+```
+sbatch /private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/run_panmap.sh \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/out \
+  /private/groups/corbettlab/alan/panmap/ \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/input_data/v_mtdna.panman \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/input_data/v_mtdna.pmai \
+  /private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/sim_reads
+```
+
+I've also just added a `simulate_and_run.py` (real path:
+`/private/groups/corbettlab/alan/lab_notebook/panmama/benchmark/simulate_and_run.py`) that will simulate reads and run
+panMAMA then delete all intermediate files. 
+
+Run 
+
+```
+python3 ../../benchmark/simulate_and_run.py \
+  ../input_data/v_mtdna.panman \
+  ../input_data/v_mtdna.pmai \
+  1 \
+  --selection node_scores
+```
+
