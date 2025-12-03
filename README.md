@@ -2684,3 +2684,23 @@ python3 ../../benchmark/simulate_and_run.py \
   --selection node_scores
 ```
 
+### Investigating ancient DNA samples from Bianca
+
+Out of the 652 samples that we got from Bianca, 520 samples do not align to the mammoth mito at all.
+
+I grabbed a random sample `ar1_10.mammoth.fq` and tried it on panMAMA.
+
+I first aligned it to a mammath sample `JF912199.1` on the tree and found that only two reads align to it but the 
+alignment quality is very good. One read perfectly matches with the reference while the other one only has one SNP
+difference.
+
+However, the node scores and the abundance estimation doesn't look too good... Either the sample is very mixed with 
+other haplotypes or the program is not performing correctly. I grabbed the most abundant haplotype from the output,
+`MW232459.1`, and used `bwa` to align all the reads to it, and none of the reads mapped to it. I then aligned the reads
+to other haplotypes and most reads that do align appear to have very low complexity, or highly repetitive, aka junk.
+
+I think I will do some pre-processing to remove low-complexity reads. Additionally, I should also toss out reads whose
+maximum parsimony is below a certain threshold.
+
+
+
