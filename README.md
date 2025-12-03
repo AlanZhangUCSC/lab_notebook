@@ -2702,5 +2702,21 @@ to other haplotypes and most reads that do align appear to have very low complex
 I think I will do some pre-processing to remove low-complexity reads. Additionally, I should also toss out reads whose
 maximum parsimony is below a certain threshold.
 
+## 12/3/2025
 
+I will try `bbduk` to remove reads with low complexity
 
+Using `bbduk` and setting entropy threshold to `0.7` seem good enough:
+
+```
+~/tools/BBTools/bbduk.sh in=ar1_10.mammoth.fq out=filtered.fq outm=low_complexity.fq entropy=0.7 
+```
+
+I will set a paremeter to throw away reads whose maximum parsimony score is less than a specific threshold (default to
+0.5 of the total seeds).
+
+Now with `ar1_10.mammoth.fq`, two reads remain after removing reads low maximum parismony score, and they are reads from
+the mammoth genomes
+
+I will try with another sample, `cr5_10.mammoth.fq`... Also worked. Very good. I will now go on phoenix and run the 
+pipeline with all the reads from Bianca.
