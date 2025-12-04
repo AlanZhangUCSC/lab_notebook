@@ -2720,3 +2720,17 @@ the mammoth genomes
 
 I will try with another sample, `cr5_10.mammoth.fq`... Also worked. Very good. I will now go on phoenix and run the 
 pipeline with all the reads from Bianca.
+
+`panmama_ancient_mito.sh` maps all the read samples to the vertebrate mito tree. Outputs are in `ancient_mito_out/`. Job
+array id: `22686096`.
+
+`panmama_ancient_mammoth_mito.sh` maps all the read samples to the mammoth mito tree. Outputs are in
+`ancient_mammoth_mito_out/`. Job array id: `22687109`.
+
+While many samples were estimated to only contain mammoth mito, there still seem to be some contaminants not filtered 
+out. I will also have panmama output the assigned reads to each haplotype estimated to be present, as well as most 
+information on the parsimony scores of the reads remaining after the low-score removal step.
+
+Rerun `panmama_ancient_mito.sh` (`22707598`) and `panmama_ancient_mammoth_mito.sh` (`22707650`)
+
+
