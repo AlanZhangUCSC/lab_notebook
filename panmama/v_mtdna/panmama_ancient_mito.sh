@@ -27,10 +27,13 @@ fastq_filtered="/data/tmp/${unique_identifier}.${basename_fastq}.filtered.fq"
 # remove low complexity reads
 ~/tools/BBTools/bbduk.sh in=${fastq_path} out=${fastq_filtered} entropy=0.7 
 
+fastq_filtered_sorted=/data/tmp/${unique_identifier}.${basename_fastq}.filtered.sorted.fq
+cat ${fastq_filtered}   | paste - - - -   | sort -k1,1 -S 3G   | tr '\t' '\n' > $fastq_filtered_sorted
+
 # run panmap
 PANMAP_PATH=/private/groups/corbettlab/alan/panmap
-PANMAN_PATH=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/input_data/v_mtdna.panman
-PMAI_PATH=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/input_data/v_mtdna.pmai
+PANMAN_PATH=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/input_data/v_mtdna.new.panman
+PMAI_PATH=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/input_data/v_mtdna.new.pmai
 OUT_DIR=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/ancient_mito_out
 
 docker load -i /private/groups/corbettlab/alan/panmap/panmap-dev.tar
@@ -38,7 +41,7 @@ docker run --rm \
   -v "$(realpath $PANMAP_PATH):/panmap" \
   -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
   -v "$(realpath $(dirname $PMAI_PATH)):/pmais" \
-  -v "$(realpath $fastq_filtered):/${basename_fastq}.fq" \
+  -v "$(realpath $fastq_filtered_sorted):/${basename_fastq}.fq" \
   -v "$(realpath $OUT_DIR):/output" \
   -w /panmap \
   --user "$(id -u):$(id -g)" \
@@ -55,7 +58,7 @@ docker run --rm \
   -v "$(realpath $PANMAP_PATH):/panmap" \
   -v "$(realpath $(dirname $PANMAN_PATH)):/panmans" \
   -v "$(realpath $(dirname $PMAI_PATH)):/pmais" \
-  -v "$(realpath $fastq_filtered):/${basename_fastq}.fq" \
+  -v "$(realpath $fastq_filtered_sorted):/${basename_fastq}.fq" \
   -v "$(realpath $OUT_DIR):/output" \
   -w /panmap \
   --user "$(id -u):$(id -g)" \
@@ -70,3 +73,4 @@ docker run --rm \
 
 
 rm ${fastq_filtered}
+rm ${fastq_filtered_sorted}

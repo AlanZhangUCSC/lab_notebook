@@ -2731,6 +2731,41 @@ While many samples were estimated to only contain mammoth mito, there still seem
 out. I will also have panmama output the assigned reads to each haplotype estimated to be present, as well as most 
 information on the parsimony scores of the reads remaining after the low-score removal step.
 
-Rerun `panmama_ancient_mito.sh` (`22707598`) and `panmama_ancient_mammoth_mito.sh` (`22707650`)
+Rerun `panmama_ancient_mito.sh` (`22756229`) and `panmama_ancient_mammoth_mito.sh` (`22756235`)
+
+## 12/4/2025
+
+### Investigate ancient_mito_out/
+
+I may have to manually look at each read that's assigned outside of the *Elephantidae* family. I will first filter out
+the good outputs where all reads are placed to the *Elephantidae* family.
+
+```
+cd /private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna
+gen_stats_mito_out.py ancient_mito_out
+```
+
+#### Closer look at sample ar1_2
+
+When I was manually investigating samples with reads placing parsimoniously outside of the mammoth "clade", I found this
+sample `ar1_2` that has some reads that place to other non-mammoth Elepahntidae nodes, specifically the genus
+*Loxodonta*. This may not may not indicate that this sample contains reads from a mixture of haplotype because the reads
+might all map better to an ancestor of both *Loxodonta* and *Mammathus*. Will look into this further when we have a
+better tree.
+
+## 12/5/2025
+
+### Investigate ancient_mammoth_mito_out/
+
+I visually inspected the outputs of several samples, and panMAMA and pathphynder have either the same placement or
+very closer placement. Since pathphynder labels the node differently from panMAN, I will need to first convert the node
+names before I can write a script to compare the output of all the samples.
+
+## 12/8/2025
+
+Sumit just sent us the newly improved vertebrate mito panman. I also found a bug in the early exit of panMAMA when no 
+reads have significant placement score. Rerunning panMAMA on the mammoth tree (`22920510`) and the new verberate tree
+`22920457`.
+
 
 
