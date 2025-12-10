@@ -22,12 +22,13 @@ def merge_to_ranges(nums):
 
 read_assignments_path = sys.argv[1]
 fastq_path = sys.argv[2]
+prefix = sys.argv[3]
 
-fastq_filtered = f'{fastq_path}.filtered.fq'
+fastq_filtered = f'{fastq_path}.{prefix}.filtered.fq'
 filter_cmd = f'~/tools/BBTools/bbduk.sh in={fastq_path} out={fastq_filtered} entropy=0.7'
 subprocess.run(filter_cmd, shell=True, check=True)
 
-fastq_filtered_sorted = f'{fastq_path}.filtered.sorted.fq'
+fastq_filtered_sorted = f'{fastq_path}.{prefix}.filtered.sorted.fq'
 sort_cmd = f"cat {fastq_filtered} | paste - - - - | sort -k1,1 -S 3G | tr '\\t' '\\n' > {fastq_filtered_sorted}"
 subprocess.run(sort_cmd, shell=True, check=True)
 
@@ -44,7 +45,7 @@ with open(read_assignments_path, 'r') as fh:
 
     merged_indices = merge_to_ranges(indices)
 
-    fastq_out_path = f'{node}.fq'
+    fastq_out_path = f'{prefix}.{node}.fq'
     fastq_fh = open(fastq_out_path, 'w')
     for start, end in merged_indices:
       cmd = f'sed -n "{start*4+1},{end*4+4}p" {fastq_path}'

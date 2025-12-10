@@ -2742,7 +2742,7 @@ the good outputs where all reads are placed to the *Elephantidae* family.
 
 ```
 cd /private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna
-gen_stats_mito_out.py ancient_mito_out
+python3 gen_stats_mito_out.py ancient_mito_out
 ```
 
 #### Closer look at sample ar1_2
@@ -2763,9 +2763,66 @@ names before I can write a script to compare the output of all the samples.
 
 ## 12/8/2025
 
-Sumit just sent us the newly improved vertebrate mito panman. I also found a bug in the early exit of panMAMA when no 
-reads have significant placement score. Rerunning panMAMA on the mammoth tree (`22920510`) and the new verberate tree
-`22920457`.
+Sumit just sent us the newly improved vertebrate mito panman. I also found and fixed a bug in the early exit of panMAMA
+when no reads have significant placement score. Rerunning panMAMA on the mammoth tree (`22920510`) and the new verberate
+tree (`22920457`).
+
+### Mammoth tree results
+
+Among cases where both PanMAMA and Pathphynder produced results, PanMAMA and Pathphynder identified identical nodes in
+approximately 70% of samples, and nodes differing by a single branch in 14% of samples.
+
+![compare_panmama_pathphynder_mammoth.png](panmama/v_mtdna/compare_panmama_pathphynder_mammoth.png)
+
+I will also try to rn pathphynder myself to see how fast it is.
+
+### Vertebrate tree results
+
+Refering to `panmama/v_mtdna/mito_assignment_stats.tsv`, I still see what seem to be either mixed or unfiltered read
+contaminations in the panMAMA results using the vertebrate mito tree. I think the latter is probably true. I will take a
+deeper look at what the reads assigned outside of the mammoth "clade" look like.
+
+### Real data to look at
+
+Look for key words like: eDNA, metagenome, metagenomics, and commonly targeted mitochondrial regions like 16S, COI,
+Cyt b and 12S
+
+COI, 12S, Cyt b can better discriminate metazoan species than 16S as 16S can also target bacteria and swampy the data
+with bacterial reads. On the other hands, we can try to use panMAMA to filter 16S reads for metazoan or organisms of
+interest.
+
+From Claude:
+
+> Fish-focused surveys: MiFish primers (12S) are the clear winner
+>
+> General vertebrate diversity (fish, amphibians, mammals, birds): 12S with broader primers (e.g., Riaz primers, Vert-12S)
+>
+> Terrestrial vertebrates: 12S or 16S can work; some researchers prefer 16S for mammals
+>
+> High-resolution species identification with tissue samples: COI or Cyt b
+>
+> Multi-kingdom surveys: 18S (nuclear, eukaryotic universal) or combined 16S bacterial + 12S/18S eukaryotic approaches
+
+##### SRX27728057: Metagenomic sequencing of Homo sapiens: blood microbiome in HIV patients (pre-ART)
+
+Are we able to filter out the HIV reads from the rest of the reads we don't care able?
+
+##### SRX23959018: metabarcoding of fisheries samples: eDNA in catch water to estimate species composition
+
+Can look at the entire bioproject. Filter out junk and estimate what's in the fisheries?
+
+## 12/9/2025
+
+I tried different combinations of `--discard` parameter in panMAMA (discard reads with placement scores lower than a
+threshold) and `entropyk` value in `bbduk` (kmer window size to measure entropy) and see which one produces better
+read assignments. I've also added more information on the intersection of assigned reads between panMAMA and
+Pathphynder.
+
+I will come with a metric to measure the performance and try out different hyperparameters for maximum performance on 
+both the vertebrate tree and the mammoth tree.
+
+
+
 
 
 

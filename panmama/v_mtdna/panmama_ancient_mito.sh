@@ -25,7 +25,7 @@ unique_identifier=$(uuidgen)
 fastq_filtered="/data/tmp/${unique_identifier}.${basename_fastq}.filtered.fq"
 
 # remove low complexity reads
-~/tools/BBTools/bbduk.sh in=${fastq_path} out=${fastq_filtered} entropy=0.7 
+~/tools/BBTools/bbduk.sh in=${fastq_path} out=${fastq_filtered} entropyk=5 entropy=0.7
 
 fastq_filtered_sorted=/data/tmp/${unique_identifier}.${basename_fastq}.filtered.sorted.fq
 cat ${fastq_filtered}   | paste - - - -   | sort -k1,1 -S 3G   | tr '\t' '\n' > $fastq_filtered_sorted
@@ -34,7 +34,7 @@ cat ${fastq_filtered}   | paste - - - -   | sort -k1,1 -S 3G   | tr '\t' '\n' > 
 PANMAP_PATH=/private/groups/corbettlab/alan/panmap
 PANMAN_PATH=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/input_data/v_mtdna.new.panman
 PMAI_PATH=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/input_data/v_mtdna.new.pmai
-OUT_DIR=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/ancient_mito_out
+OUT_DIR=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/ancient_mito_out_MPS0.6_entropyk5_entropy0.5
 
 docker load -i /private/groups/corbettlab/alan/panmap/panmap-dev.tar
 docker run --rm \
@@ -52,6 +52,7 @@ docker run --rm \
               -m /pmais/$(basename $PMAI_PATH) \
               --read-scores \
               --prefix /output/${basename_fastq}.read_scores \
+              --discard 0.6 \
               --cpus 8"
 
 docker run --rm \
@@ -69,6 +70,7 @@ docker run --rm \
               -m /pmais/$(basename $PMAI_PATH) \
               --overlap-coefficients 1000 \
               --prefix /output/${basename_fastq}.overlap_coefficients \
+              --discard 0.6 \
               --cpus 8"
 
 
