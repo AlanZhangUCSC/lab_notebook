@@ -11,7 +11,7 @@
 #SBATCH --error=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/logs/%x.%A.%a.%j.err
 #SBATCH --partition=short
 #SBATCH --time=01:00:00
-#SBATCH --array=0-651%50
+#SBATCH --array=0-651%100
 
 set -x
 
@@ -34,7 +34,9 @@ cat ${fastq_filtered}   | paste - - - -   | sort -k1,1 -S 3G   | tr '\t' '\n' > 
 PANMAP_PATH=/private/groups/corbettlab/alan/panmap
 PANMAN_PATH=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/input_data/v_mtdna.new.panman
 PMAI_PATH=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/input_data/v_mtdna.new.pmai
-OUT_DIR=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/ancient_mito_out_MPS0.6_entropyk5_entropy0.5
+OUT_DIR=/private/groups/corbettlab/alan/lab_notebook/panmama/v_mtdna/ancient_mito_out_MPS0.9_entropyk5
+
+mkdir -p $OUT_DIR
 
 docker load -i /private/groups/corbettlab/alan/panmap/panmap-dev.tar
 docker run --rm \
@@ -52,7 +54,7 @@ docker run --rm \
               -m /pmais/$(basename $PMAI_PATH) \
               --read-scores \
               --prefix /output/${basename_fastq}.read_scores \
-              --discard 0.6 \
+              --discard 0.9 \
               --cpus 8"
 
 docker run --rm \
@@ -70,7 +72,7 @@ docker run --rm \
               -m /pmais/$(basename $PMAI_PATH) \
               --overlap-coefficients 1000 \
               --prefix /output/${basename_fastq}.overlap_coefficients \
-              --discard 0.6 \
+              --discard 0.9 \
               --cpus 8"
 
 

@@ -2821,8 +2821,69 @@ Pathphynder.
 I will come with a metric to measure the performance and try out different hyperparameters for maximum performance on 
 both the vertebrate tree and the mammoth tree.
 
+## 12/10/2025
+
+I calculated the precision, recall, and F1 scores of the different `--discard` parameters in panMAMA and `entropyk`
+values in `bbduk` 
+
+I tried `entropyk` value at 4, 5, and 6 for `--dicard` threshold at 0.4, 0.5, 0.6, 0.7, 0.8.
 
 
+![hyperparameter](panmama/v_mtdna/mito_assignment_stats_comparison.png)
+
+It seems like an `entropyk=5` is the obvious winner. Between a discard threshold 0.6 and 0.8, there's a tradeoff
+between precision and recall, which is not surprising. **F1 score shows that a discard threshold of 0.7 has a slight
+edge.**
+
+Precision-recall curve using `entropyk=5`
+
+![prc](panmama/v_mtdna/mito_assignment_entropyk5_prc.png)
+
+Below is the raw data
+
+```
+MPS  Entropyk  Precision            Recall               F1
+0.4  4         0.11351030110935023  0.315702479338843    0.16698236922628587
+0.4  5         0.29283069673510603  0.9613259668508287   0.44891640866873067
+0.4  6         0.07950463225562489  0.4631057268722467   0.13571082781991287
+0.5  4         0.260543580131209    0.3068432671081678   0.2818043588443994
+0.5  5         0.6777950310559007   0.9635761589403974   0.7958067456700091
+0.5  6         0.15223097112860892  0.4476295479603087   0.22719641857862338
+0.6  4         0.3025302530253025   0.30353200883002207  0.30303030303030304
+0.6  5         0.8676028084252758   0.9547461368653422   0.9090909090909091
+0.6  6         0.24492931776275353  0.4403314917127072   0.3147709320695103
+0.7  4         0.3093858632676709   0.2950276243093923   0.3020361990950226
+0.7  5         0.9519230769230769   0.9298342541436464   0.9407490217998882
+0.7  6         0.3572080291970803   0.432357813362783    0.3912065950537097
+0.8  4         0.31840796019900497  0.2830292979546711   0.2996780801872988
+0.8  5         0.9728395061728395   0.871199557766722    0.9192184310294547
+0.8  6         0.4380069524913094   0.417910447761194    0.4277227722772277
+```
+
+```
+MPS  Entropyk  Precision             Recall              F1
+0.3  5         0.057291321903753224  0.9526692350027518  0.10808279479254472
+0.4  5         0.29283069673510603   0.9613259668508287  0.44891640866873067
+0.5  5         0.6777950310559007    0.9635761589403974  0.7958067456700091
+0.6  5         0.8676028084252758    0.9547461368653422  0.9090909090909091
+0.7  5         0.9519230769230769    0.9298342541436464  0.9407490217998882
+0.8  5         0.9728395061728395    0.871199557766722   0.9192184310294547
+0.9  5         0.9792592592592593    0.7340366463076069  0.8390986988257696
+```
 
 
+There might be some reads that could be in the Elephantidae family but are not mappable if a Mammuthus primigenius
+reference is used. I will need to look at the sample individually. 
 
+I will run this same analysis again when Sumit sent the a vertebrate tree with more primigenius reads merged in.
+
+I'm starting to look at the sample individually to look for reads potentially from other Elephantidae family members.
+
+| Interesting samples |
+| ------------------- |
+| ar1_2 |
+
+
+Actually, another feature I can add for read filtering is throwing away reads mapping to spurious nodes on the tree with
+node phylogenetic siginificance. Will try it out maybe tomorrow. And maybe skip over the EM step entirely for filtering
+and assigning reads to divergent trees like this here?
