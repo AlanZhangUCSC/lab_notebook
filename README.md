@@ -2875,7 +2875,7 @@ MPS  Entropyk  Precision             Recall              F1
 There might be some reads that could be in the Elephantidae family but are not mappable if a Mammuthus primigenius
 reference is used. I will need to look at the sample individually. 
 
-I will run this same analysis again when Sumit sent the a vertebrate tree with more primigenius reads merged in.
+I will run the same analysis again when Sumit sent the a vertebrate tree with more primigenius reads merged in.
 
 I'm starting to look at the sample individually to look for reads potentially from other Elephantidae family members.
 
@@ -2887,3 +2887,12 @@ I'm starting to look at the sample individually to look for reads potentially fr
 Actually, another feature I can add for read filtering is throwing away reads mapping to spurious nodes on the tree with
 node phylogenetic siginificance. Will try it out maybe tomorrow. And maybe skip over the EM step entirely for filtering
 and assigning reads to divergent trees like this here?
+
+## 12/11/2025
+
+I think I will try to make a pretty figure today. Strategy:
+
+1. Condense the tree by families
+2. subsample the family tree
+3. plot the family tree and highlight the Elephantidae family
+4. plot the detailed Elephantidae family tree and annotate with reads assigned
