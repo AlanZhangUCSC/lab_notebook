@@ -6,7 +6,11 @@ This notebook will track the progress of my work in the lab.
 
 [Jan](#1302025) &nbsp; [Feb](#212025) &nbsp; [Mar](#392025) &nbsp; [Sep](#9192025) &nbsp; [Oct](#1012025) &nbsp;
 
-[Nov](#1132025) &nbsp; [Dec](#1212025) &nbsp;
+[Nov](#1132025) &nbsp; [Dec](#1212025) &nbsp; 
+
+## 2026
+
+[Mar](#3302026) &nbsp; 
 
 ## 1/30/2025
 
@@ -2896,3 +2900,23 @@ I think I will try to make a pretty figure today. Strategy:
 2. subsample the family tree
 3. plot the family tree and highlight the Elephantidae family
 4. plot the detailed Elephantidae family tree and annotate with reads assigned
+
+## 3/30/2026
+
+We just submitted Panmap to Nature Genetics!
+
+I haven't updated the lab notebook in a while. Now that I will start a new project,I will try to update it more
+consistently from now on.
+
+### Panmap
+
+I updated `/scratch1/alan/panmap/build/_deps/panman-src/src/panman.cpp` to use the new PanMAN format.
+
+#### Ancient DNA
+
+I will run panmap on the ancient DNA for selected Salicaceae chloroplast genomes.
+
+I just implemented a new function for 
+fast assignment of reads to their LCA nodes on the tree. Now panmap also outputs the LCA read counts for each node.
+
+The Salicaceae output is a bit confusing. Will need to investigate further.
