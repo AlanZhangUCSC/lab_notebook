@@ -2901,6 +2901,22 @@ I think I will try to make a pretty figure today. Strategy:
 3. plot the family tree and highlight the Elephantidae family
 4. plot the detailed Elephantidae family tree and annotate with reads assigned
 
+## 12/12/2025
+
+### Running and comparing WEPP to panMAMA
+
+Command to enter WEPP docker
+
+```
+docker run -it   -v /private/groups/corbettlab/alan/lab_notebook/panmama/WEPP/WEPP/src/WEPP/qc_preprocess.py:/WEPP/src/WEPP/qc_preprocess.py   -v /private/groups/corbettlab/alan/lab_notebook/panmama/WEPP/WEPP/config/config.yaml:/WEPP/config/config.yaml   -v /private/groups/corbettlab/alan/lab_notebook/panmama/WEPP/WEPP/workflow/rules/qc.smk:/WEPP/workflow/rules/qc.smk   -v /private/groups/corbettlab/alan/lab_notebook/panmama/WEPP/WEPP/src/WEPP/config.hpp:/WEPP/src/WEPP/config.hpp   -v /private/groups/corbettlab/alan/lab_notebook/panmama/WEPP/for_pranav:/data   pranavgangwar/wepp:latest
+```
+
+Use this command to get the results comparing panMAMA's and WEPP's performance on mixed HIV samples with 50 haplotypes:
+
+```
+for rep in 0 1 2 3 4 5 6 7 8 9; do echo $rep; sed 's/WEPP/MAMA/g'  panmama/hiv20000_50hap-a_300000_rep${rep}.mama.distance_sum.tsv; log="wepp/results/hiv20000_50hap-a_300000_rep${rep}/hiv_50hap_rep${rep}_run.txt"; whd=$(grep 'true_node' $log | cut -f3 -d ' ' | awk '{sum += $1 * 0.02} END {print sum}'); wpd=$(grep 'PEAK' $log | cut -f 6 -d ' ' | awk '{sum += $1} END {print sum}'); echo -e "WEPP\t${whd}\t${wpd}"; echo ""; done
+```
+
 ## 3/30/2026
 
 We just submitted Panmap to Nature Genetics!
