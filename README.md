@@ -2920,3 +2920,5 @@ I just implemented a new function for
 fast assignment of reads to their LCA nodes on the tree. Now panmap also outputs the LCA read counts for each node.
 
 The Salicaceae output is a bit confusing. Will need to investigate further.
+
+For tomorrow: FIX BUG IN PLOTTING SCRIPT. NCXXXXX nodes are not being correctly labeled.
