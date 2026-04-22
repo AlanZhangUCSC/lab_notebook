@@ -2939,6 +2939,18 @@ The Salicaceae output is a bit confusing. Will need to investigate further.
 
 For tomorrow: FIX BUG IN PLOTTING SCRIPT. NCXXXXX nodes are not being correctly labeled.
 
+## 3/31/2026
+
+### Panmap
+
+I updated the panmap CMakeLists.txt to build on Phoenix.
+
+A backup of the new CMakeLists.txt is in `/backup/3_31_2026/CMakeLists.txt`.
+
+### Ancient DNA
+
+I rerooted the salicaceae panman tree and ran Zihao's data again.
+
 
 ## 4/17/2026
 
@@ -3404,10 +3416,3 @@ for f in beds/*.bed; do
     2> "${db}.alu.log"
 done
 ```
-
-
-
-
-
-
-
