@@ -10,7 +10,7 @@ This notebook will track the progress of my work in the lab.
 
 ## 2026
 
-[Mar](#3302026) &nbsp; 
+[Mar](#3302026) &nbsp; [Apr](#4172026) &nbsp; 
 
 ## 1/30/2025
 
@@ -2938,3 +2938,476 @@ fast assignment of reads to their LCA nodes on the tree. Now panmap also outputs
 The Salicaceae output is a bit confusing. Will need to investigate further.
 
 For tomorrow: FIX BUG IN PLOTTING SCRIPT. NCXXXXX nodes are not being correctly labeled.
+
+
+## 4/17/2026
+
+### Chloroplast panMAN
+
+cpstools IR had some trouble identifying the regions for a few of the genomes. For one, it flagged the assembly as
+incorrect; cutting the first 50 lines of its fasta and pasting them to the end fixed it. For 18 others, there were
+ambiguous bases that cpstools refused to handle, so I replaced each with the lowest lexicographical canonical base it
+represents, solely for the purpose of region identification. I then ran cpstools Seq to orient the original fastas using
+the resulting region coordinates. I've also attached information on the ambiguous sites so you can decide whether to
+discard genomes with too much missing data or with ambiguous sites too close to the region boundaries.
+
+I used `OP650215.1` as the seed to orient the regions in the same direction using minimap2 and seqkit.
+
+Used mafft to align the regions. I'm using mafft for now because it's fast and easy to use. I decided to do both mafft
+auto mode and ginsi mode (--globalpair) to see which one performs better. Ginsi mode will take much longer so I will go
+ahead and build the tree using the auto mode results for now.
+
+Trim the gappy boundries using `trimal` and also get the stats.
+
+```bash
+cd /scratch1/alan/lab_notebook/panmama/salicaceae/data/salicaceae/salicaceae_regions/split_regions/alignments
+mkdir -p stats
+for aln in *mafft-auto.aln; do
+  prefix=$(basename $aln .aln)
+    
+  trimal -in $aln -out ${prefix}.trimmed.aln -automated1
+
+  trimal -in $aln                  -sident > stats/${prefix}.sident.txt
+  trimal -in ${prefix}.trimmed.aln -sident > stats/${prefix}.trimmed.sident.txt
+
+  python3 /scratch1/alan/lab_notebook/panmama/salicaceae/data/salicaceae/salicaceae_regions/plot_identity_heatmap.py \
+    stats/${prefix}.sident.txt \
+    --metadata /scratch1/alan/lab_notebook/panmama/salicaceae/data/salicaceae/meta.tsv \
+    --output stats/${prefix}.sident.heatmap.png
+
+  python3 /scratch1/alan/lab_notebook/panmama/salicaceae/data/salicaceae/salicaceae_regions/plot_identity_heatmap.py \
+    stats/${prefix}.trimmed.sident.txt \
+    --metadata /scratch1/alan/lab_notebook/panmama/salicaceae/data/salicaceae/meta.tsv \
+    --output stats/${prefix}.trimmed.sident.heatmap.png
+done
+```
+
+In the `alignments` dir, I have the MSA aln files of ingroup, ingroup&outgroup (aligned together), and ingroup+outgroup 
+(outgroup added to the ingroup alignment). I will use the ingroup&outgroup alignment to build the tree.
+
+Oh.. forgot to add, the outgroup is a Viola biflora chloroplast genome (`OM177182.2`).
+
+First, concatenate the alignments.
+
+```bash
+cd /scratch1/alan/lab_notebook/panmama/salicaceae/data/salicaceae/salicaceae_regions/concatenated/regions
+python3 /scratch1/alan/lab_notebook/panmama/salicaceae/data/salicaceae/salicaceae_regions/concat_aln_regions.py \
+  -i merged.LSC.oriented.with_outgroup.mafft-auto.trimmed.aln \
+     merged.SSC.oriented.with_outgroup.mafft-auto.trimmed.aln \
+     merged.IRa.oriented.with_outgroup.mafft-auto.trimmed.aln \
+  -o ../concat.fasta \
+  -p ../partition.txt
+```
+
+Then run `iqtree`
+```
+iqtree2 -s concat.fasta -p partition.txt -m MFP+MERGE -B 1000 -alrt 1000 -T AUTO &
+```
+
+Seems like 13 genomes failed the initial gap/ambiguity assessment... I will go ahead and build the tree with them 
+included. I will try building the tree without them later.
+
+```
+grep failed partition.txt.log  | grep -v TOTAL
+```
+
+<details>
+<summary>Failed genomes</summary>
+
+```bash
+   2  CM018592.1            14.70%    failed      0.00%
+   8  MK341060.1            13.88%    failed      0.00%
+   9  MK722343.1            16.35%    failed      0.00%
+  10  MK748469.1            14.94%    failed      0.00%
+  13  MN078141.1             3.59%    failed      1.40%
+  21  MW147595.1             2.76%    failed      0.44%
+  33  MW801246.1             3.57%    failed      1.43%
+  38  NC_028350.1           14.83%    failed      0.00%
+  68  NC_044462.1           11.28%    failed      0.00%
+  71  NC_045919.1           16.37%    failed      1.70%
+  72  NC_046687.1           11.26%    failed      0.00%
+  87  OL622106.1            10.45%    failed      0.00%
+ 116  PQ400062.1             3.68%    failed      2.59%
+```
+
+</details>
+
+The results are back
+
+```bash
+iqtree -rf partition.txt.treefile partition.txt.contree
+column -t partition.txt.contree.rfdist
+```
+
+```
+1      1
+Tree0  0
+```
+
+Excellent both the ML tree (`.treefile`) and the bootstrap consensus tree (`.contree`) are identical.
+
+
+Now reroot the tree to the outgroup then remove the outgroup from the tree.
+
+```
+nw_reroot iqtree_results/partition.txt.treefile OM177182.2.oriented > iqtree_results/partition.txt.rerooted.nwk
+nw_prune iqtree_results/partition.txt.rerooted.nwk OM177182.2.oriented > iqtree_results/partition.txt.root_pruned.nwk
+```
+
+## 4/19/2026
+
+Now I'm going to investigate the genomes that failed the initial gap/ambiguity assessment. Some of them have a very
+small IR region and "abnormally" large SSC and LSC regions, while their total genome sizes are consistent with other
+genomes... Did cpstools identify the regions incorrectly?
+
+```bash
+$ sort -k3,3 -g region_sizes_info.tsv | column -t | head
+MK722343.1   Salix             7701   50551  89868   155821
+NC_045919.1  Homalium          8135   21454  119392  157116
+CM018592.1   Salix             9338   51477  85451   155604
+NC_028350.1  Salix             9389   46603  91438   156819
+MK748469.1   Salix             9880   50333  84933   155026
+MK341060.1   Populus           10606  50453  84629   156294
+NC_044462.1  Populus           13886  43905  84513   156190
+OL622106.1   Salix             14618  41869  84432   155537
+NC_046687.1  Flacourtia        14908  41078  85329   156223
+NC_033876.1  Populus           16416  16806  105717  155355
+```
+
+Seems like `cpstools` did not identify the regions correctly for some of the genomes, at least for `MK722343.1` that I
+checked manually using `mummer`. I manually rotated its fasta file for easier inspection. Here is its mummer coordinates
+output:
+
+```
+[S1]    [E1]    [S2]    [E2]    [LEN 1] [LEN 2] [% IDY] [LEN R] [LEN Q] [COV R] [COV Q] [TAGS]
+1       155821  1       155821  155821  155821  100.00  155821  155821  100.00  100.00  MK722343.1.fasta        MK722343.1.fasta
+61780   89319   133095  105562  27540   27534   99.95   155821  155821  17.67   17.67   MK722343.1.fasta        MK722343.1.fasta
+105562  133095  89319   61780   27534   27540   99.95   155821  155821  17.67   17.67   MK722343.1.fasta        MK722343.1.fasta
+```
+
+vs the cpstools output
+
+```
+MK722343.1.fasta        LSC:130419-155821,1-64465       IRb:64466-72166 SSC:72167-122717        IRa:122718-130418
+```
+
+While cpstools identified the IR regions to be 7701 bp, `mummer` identified the IR regions to be ~27540 bp, which is a 
+much more expected size... Same is true for `NC_045919.1`.
+
+mummer output:
+```
+[S1]    [E1]    [S2]    [E2]    [LEN 1] [LEN 2] [% IDY] [LEN R] [LEN Q] [COV R] [COV Q] [TAGS]
+1       157116  1       157116  157116  157116  100.00  157116  157116  100.00  100.00  NC_045919.1.fasta       NC_045919.1.fasta
+78750   106383  150671  123038  27634   27634   99.91   157116  157116  17.59   17.59   NC_045919.1.fasta       NC_045919.1.fasta
+123038  150671  106383  78750   27634   27634   99.91   157116  157116  17.59   17.59   NC_045919.1.fasta       NC_045919.1.fasta
+```
+
+vs cpstools output
+
+```
+NC_045919.1.fasta       LSC:133573-157116,1-95848       IRb:95849-103983        SSC:103984-125437       IRa:125438-133572
+```
+
+I'm going to write a alignment (prolly nucmer) based script to identify the IR regions..
+
+```
+Warning: rotated genome still has IR regions near the edges for NC_044462.1_intermediates/rotated_NC_044462.1.fa
+Warning: rotated genome still has IR regions near the edges for OK505606.1_intermediates/rotated_OK505606.1.fa
+Warning: rotated genome still has IR regions near the edges for OL622106.1_intermediates/rotated_OL622106.1.fa
+Warning: rotated genome still has IR regions near the edges for OQ791207.1_intermediates/rotated_OQ791207.1.fa
+```
+
+## 4/20/2026
+
+I wrote a `iden_region_mummer.py` script that self-aligns a circular plastid genome FASTA with MUMmer's nucmer, rotates
+it so the inverted repeats (IRs) aren't split across the boundary, and writes the four quadripartite regions (LSC, IRa,
+SSC, IRb) as separate FASTAs. If the IRs are non-identical or multiple inversion pairs are detected, it logs a warning
+for manual inspection.
+
+Only two genomes require manual inspection: `NC_028350.1` and `NC_032368.1`.
+
+```
+$ grep 'Found more than a single inversion pair' *log
+NC_028350.1.log:Found more than a single inversion pair in ../../salicaceae_fastas/original_fastas/NC_028350.1.fasta
+NC_032368.1.log:Found more than a single inversion pair in ../../salicaceae_fastas/original_fastas/NC_032368.1.fasta
+```
+
+**NC_028350.1**
+
+nucmer output:
+```
+[S1]    [E1]    [S2]    [E2]    [LEN 1] [LEN 2] [% IDY] [LEN R] [LEN Q] [COV R] [COV Q] [TAGS]
+1       156819  1       156819  156819  156819  100.00  156819  156819  100.00  100.00  NC_028350.1     NC_028350.1
+45258   59091   116817  102998  13834   13820   99.24   156819  156819  8.82    8.81    NC_028350.1     NC_028350.1
+59196   72879   102885  89153   13684   13733   98.52   156819  156819  8.73    8.76    NC_028350.1     NC_028350.1
+89153   102885  72879   59196   13733   13684   98.52   156819  156819  8.76    8.73    NC_028350.1     NC_028350.1
+102998  116817  59091   45258   13820   13834   99.24   156819  156819  8.81    8.82    NC_028350.1     NC_028350.1
+103745  116817  58344   45258   13073   13087   99.19   156819  156819  8.34    8.35    NC_028350.1     NC_028350.1
+```
+
+Seems like there's a small gap at 59092-59195 and 102886-102997, ~100 bps, while the rest of the alignment is very high identity. The sizes of the inverted repeats are also consistent with the expected IR regions after merging... I will 
+manually merge the IR regions to 45258-72879 and 89153-116817. 
+
+```
+NC_028350.1_final.fa  LSC:116818-156819,1-45257  IRb:45258-72879 SSC:72880-89152 IRa:89153-116817
+```
+
+**NC_032368.1**
+
+nucmer output:
+```
+[S1]    [E1]    [S2]    [E2]    [LEN 1] [LEN 2] [% IDY] [LEN R] [LEN Q] [COV R] [COV Q] [TAGS]
+1       158591  1       158591  158591  158591  100.00  158591  158591  100.00  100.00  NC_032368.1     NC_032368.1
+44634   72301   118591  90924   27668   27668   100.00  158591  158591  17.45   17.45   NC_032368.1     NC_032368.1
+70230   72301   72302   74373   2072    2072    100.00  158591  158591  1.31    1.31    NC_032368.1     NC_032368.1
+72302   74373   70230   72301   2072    2072    100.00  158591  158591  1.31    1.31    NC_032368.1     NC_032368.1
+72302   74373   92995   90924   2072    2072    100.00  158591  158591  1.31    1.31    NC_032368.1     NC_032368.1
+90924   118591  72301   44634   27668   27668   100.00  158591  158591  17.45   17.45   NC_032368.1     NC_032368.1
+90924   92995   74373   72302   2072    2072    100.00  158591  158591  1.31    1.31    NC_032368.1     NC_032368.1
+```
+
+Seems like it's got a moderate sized tandem repeat (~2kb) at the SSC and IRb boundry that's also inverted repeat... I
+think I will set the tandem repeat to be the SSC region. This is also consistent with `cpstools` output:
+
+```
+NC_032368.1_final.fa    LSC:118592-158591,1-44633       IRb:44634-72301 SSC:72302-90923 IRa:90924-118591
+```
+
+### Rerunning alignment and iqtree using regions identified by `iden_region_mummer.py`
+
+```
+grep failed partition.txt.log  | grep -v TOTAL
+```
+
+<details>
+<summary>Failed genomes</summary>
+
+```bash
+  13  MN078141.1     4.75%    failed      1.38%
+  21  MW147595.1     4.04%    failed      0.23%
+  33  MW801246.1     4.72%    failed      1.58%
+ 117  PQ400062.1     4.60%    failed      4.26%
+```
+
+</details>
+
+## 4/21/2026
+
+### Salicaceae tree
+
+The alignment files and the final tree seem to be better with the regions identified by `iden_region_mummer.py`. The
+3/4 genomes that failed the initial gap/ambiguity assessment are all from `Casearia` genus and the other one, MW147595,
+is from `Dianyuea` genus and is the only one genome im the `Dianyuea`.
+
+Seems possible that the `Casearia` genus might have some distinct IR boundry shifts. I will try to build a `Casearia` 
+only tree with the outgtoup to see if the tree is consistent with the `Casearia` subtree in the Salicaceae tree.
+
+I just confirmed that the `Casearia` only tree is consistent with the `Casearia` subtree in the Salicaceae tree. Yay.
+
+### Primate Alu tree
+
+First get all the Alu family consensus sequences from `famdb`
+
+```
+famdb.py -i famdb/ families -f fasta_name --include-class-in-name --class SINE/Alu -ad 9443 > primate_alu.ad.fa
+```
+
+I used different combinations of `-ad` and `--curated` to get
+
+```
+$ ls -1 *fa
+primate_alu.ad.curated.fa
+primate_alu.ad.fa
+primate_alu.curated.fa
+primate_alu.d.curated.fa
+primate_alu.d.fa
+primate_alu.fa
+```
+
+I will start with the `primate_alu.ad.curated.fa` file for now.
+
+I think I will use two different methods to get the actual Alu sequences. First, through blastn against the core_nt database. Second, through the annotated Alu's from UCSC genome browser's rmsk table/track. 
+
+#### BLASTn against core_nt database
+
+Running `blastn` on phoenix.
+
+```
+echo "Running blastn..."
+time /private/home/bzhan146/tools/blast/ncbi-blast-2.17.0+/bin/blastn \
+  -task dc-megablast \
+  -query "$fasta" \
+  -db "$tmp_dir/ncbi_core_nt/core_nt" \
+  -taxids 9443 \
+  -evalue 1e-10 \
+  -dust no \
+  -perc_identity 70 \
+  -max_target_seqs 10000 \
+  -outfmt '6 qseqid sseqid staxid ssciname pident length mismatch gapopen qstart qend sstart send evalue bitscore sstrand' \
+  -num_threads 16 \
+  -out "$out_file"
+```
+
+See `bzhan146@emerald.prism:/private/home/bzhan146/scripts/tes/run_blast.sh` for the slurm script. Output is saved to 
+`bzhan146@emerald.prism:/private/groups/corbettlab/alan/lab_notebook/tes/primate_alu.ad.curated.blast_hits.txt`
+
+#### UCSC rmsk track
+
+Get all the UCSC assemblies.
+
+```
+curl -s "https://api.genome.ucsc.edu/list/ucscGenomes" | \
+  jq -r '.ucscGenomes | to_entries[] | 
+         [.key, .value.organism, .value.scientificName, .value.taxId, .value.description] 
+         | @tsv' \
+  > all_ucsc_assemblies.tsv
+```
+
+Run script below to get all the **primate assemblies** from the UCSC assemblies and save to
+`/scratch1/alan/lab_notebook/tes/ucsc_primate_assemblies.tsv`
+
+```
+python3 /scratch1/alan/lab_notebook/tes/scripts/get_primate_ids.py
+```
+
+Then I manually selected the latest assembly for eachp primate species and saved to
+`/scratch1/alan/lab_notebook/tes/ucsc_primate_assemblies.selected.tsv`:
+
+```
+calJac4 Marmoset        Callithrix jacchus      9483    May 2020 (Callithrix_jacchus_cj1700_1.1/calJac4)
+chlSab2 Green monkey    Chlorocebus sabaeus     60711   Mar. 2014 (Chlorocebus_sabeus 1.1/chlSab2)
+gorGor6 Gorilla Gorilla gorilla gorilla 9595    Aug. 2019 (Kamilah_GGO_v0/gorGor6)
+hg38    Human   Homo sapiens    9606    Dec. 2013 (GRCh38/hg38)
+hs1     Human   Homo sapiens    9606    Jan. 2022 (T2T CHM13v2.0/hs1)
+macFas5 Crab-eating macaque     Macaca fascicularis     9541    Jun. 2013 (Macaca_fascicularis_5.0/macFas5)
+micMur2 Mouse lemur     Microcebus murinus      30608   May 2015 (Mouse lemur/micMur2)
+nasLar1 Proboscis monkey        Nasalis larvatus        43780   Nov. 2014 (Charlie1.0/nasLar1)
+nomLeu3 Gibbon  Nomascus leucogenys     61853   Oct. 2012 (GGSC Nleu3.0/nomLeu3)
+otoGar3 Bushbaby        Otolemur garnettii      30611   Mar. 2011 (Broad/otoGar3)
+panPan3 Bonobo  Pan paniscus    9597    May 2020 (Mhudiblu_PPA_v0/panPan3)
+panTro6 Chimp   Pan troglodytes 9598    Jan. 2018 (Clint_PTRv2/panTro6)
+papAnu4 Baboon  Papio anubis    9555    Apr. 2017 (Panu_3.0/papAnu4)
+papHam1 Baboon  Papio hamadryas 9562    Nov. 2008 (Baylor Pham_1.0/papHam1)
+ponAbe3 Orangutan       Pongo pygmaeus abelii   9601    Jan. 2018 (Susie_PABv2/ponAbe3)
+rheMac10        Rhesus  Macaca mulatta  9544    Feb. 2019 (Mmul_10/rheMac10)
+rhiRox1 Golden snub-nosed monkey        Rhinopithecus roxellana 61622   Oct. 2014 (Rrox_v1/rhiRox1)
+saiBol1 Squirrel monkey Saimiri boliviensis     39432   Oct. 2011 (Broad/saiBol1)
+```
+
+Run to see what tracks matching 'rmsk' and 'repeat' are there for each assembly
+
+```
+for db in $(cut -f1 ucsc_primate_assemblies.selected.tsv); do
+  tracks=$(curl -s "https://api.genome.ucsc.edu/list/tracks?genome=${db}" | \
+           jq -r --arg db "$db" '
+             .[$db] | keys[] | select(test("rmsk|repeat"; "i"))' | \
+           paste -sd, -)
+  echo -e "${db}\t${tracks:-none}"
+done
+```
+
+```
+calJac4 nestedRepeats,rmsk,simpleRepeat
+chlSab2 nestedRepeats,rmsk,simpleRepeat
+gorGor6 nestedRepeats,rmsk,simpleRepeat
+hg38    joinedRmsk,nestedRepeats,rmsk,simpleRepeat
+hs1     simpleRepeat,t2tRepeatMasker
+macFas5 rmsk,simpleRepeat
+micMur2 nestedRepeats,rmsk,simpleRepeat
+nasLar1 nestedRepeats,rmsk,simpleRepeat
+nomLeu3 nestedRepeats,rmsk,simpleRepeat
+otoGar3 nestedRepeats,rmsk,simpleRepeat
+panPan3 nestedRepeats,rmsk,simpleRepeat
+panTro6 nestedRepeats,rmsk,simpleRepeat
+papAnu4 nestedRepeats,rmsk,simpleRepeat
+papHam1 nestedRepeats,rmsk,simpleRepeat
+ponAbe3 nestedRepeats,rmsk,simpleRepeat
+rheMac10        nestedRepeats,rmsk,simpleRepeat
+rhiRox1 nestedRepeats,rmsk,simpleRepeat
+saiBol1 nestedRepeats,rmsk,simpleRepeat
+```
+
+Seems like every core primate assembly has rmsk except hs1 (T2T-CHM13). The T2T assembly uses a different track name (t2tRepeatMasker) because it's served as a hub rather than a traditional MySQL-backed assembly. So hs1 needs a different
+download path than the others.
+
+Download the pre-computed RepeatMasker output files for assemblies with rmsk track (calJac4 chlSab2 gorGor6 hg38 macFas5
+micMur2 nasLar1 nomLeu3 otoGar3 panPan3 panTro6 papAnu4 papHam1 ponAbe3 rheMac10 rhiRox1 saiBol1).
+
+```
+for db in calJac4 chlSab2 gorGor6 hg38 macFas5 micMur2 nasLar1 nomLeu3 \
+          otoGar3 panPan3 panTro6 papAnu4 papHam1 ponAbe3 rheMac10 \
+          rhiRox1 saiBol1; do
+  url="https://hgdownload.soe.ucsc.edu/goldenPath/${db}/bigZips/${db}.fa.out.gz"
+  echo "Fetching ${db}..."
+  wget -c -q "$url" -O "${db}.fa.out.gz" || echo "  FAILED: $db"
+done
+```
+
+Then download the T2T-CHM13 RepeatMasker file.
+
+```
+wget https://hgdownload.soe.ucsc.edu/hubs/GCA/009/914/755/GCA_009914755.4/bbi/GCA_009914755.4_T2T-CHM13v2.0.t2tRepeatMasker/chm13v2.0_rmsk.out.gz
+```
+
+Extract Alus positions to bed files.
+
+```
+for f in *.fa.out.gz chm13v2.0_rmsk.out.gz; do
+  db="${f%.fa.out.gz}"
+  zcat "$f" | awk 'NR>3 && $11 ~ /^SINE\/Alu$/ {
+    chrom=$5; start=$6-1; end=$7; strand=($9=="C"?"-":"+");
+    name=$10;
+    print chrom"\t"start"\t"end"\t"name"\t0\t"strand
+  }' > "${db}.alu.bed"
+  echo "${db}: $(wc -l < ${db}.alu.bed) Alu elements"
+done
+```
+
+Download the fasta files for the assemblies.
+
+```
+mkdir -p genomes && cd genomes
+for db in calJac4 chlSab2 gorGor6 hg38 macFas5 micMur2 nasLar1 nomLeu3 \
+          otoGar3 panPan3 panTro6 papAnu4 papHam1 ponAbe3 rheMac10 \
+          rhiRox1 saiBol1; do
+  wget -c -q "https://hgdownload.soe.ucsc.edu/goldenPath/${db}/bigZips/${db}.fa.gz" \
+       -O "${db}.fa.gz"
+done
+
+wget -c "https://hgdownload.soe.ucsc.edu/hubs/GCA/009/914/755/GCA_009914755.4/GCA_009914755.4.fa.gz" \
+     -O hs1.fa.gz
+```
+
+Decompress for bedtools
+
+```
+for f in *.fa.gz; do
+  db="${f%.fa.gz}"
+  zcat "$f" | bgzip -@ 4 > "${db}.fa.bgz"
+  samtools faidx "${db}.fa.bgz"
+  rm "$f"
+done
+```
+
+Running bedtools to get the Alu sequences to fasta files.
+
+```
+for f in beds/*.bed; do
+  db=$(basename "$f" .alu.bed)
+  echo "Extracting ${db}..."
+  bedtools getfasta \
+    -fi "../genome_fastas/${db}.fa" \
+    -bed "$f" \
+    -s \
+    -name+ \
+    -fo "${db}.alu.fa" \
+    2> "${db}.alu.log"
+done
+```
+
+
+
+
+
+
+
