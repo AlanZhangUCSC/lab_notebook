@@ -3394,10 +3394,7 @@ Decompress for bedtools
 
 ```
 for f in *.fa.gz; do
-  db="${f%.fa.gz}"
-  zcat "$f" | bgzip -@ 4 > "${db}.fa.bgz"
-  samtools faidx "${db}.fa.bgz"
-  rm "$f"
+  gunzip "$f"
 done
 ```
 
