@@ -3255,7 +3255,7 @@ time /private/home/bzhan146/tools/blast/ncbi-blast-2.17.0+/bin/blastn \
   -dust no \
   -perc_identity 70 \
   -max_target_seqs 10000 \
-  -outfmt '6 qseqid sseqid staxid ssciname pident length mismatch gapopen qstart qend sstart send evalue bitscore sstrand' \
+  -outfmt '6 qseqid sseqid staxid ssciname pident length mismatch gapopen qstart qend sstart send evalue bitscore sstrand qseq sseq' \
   -num_threads 16 \
   -out "$out_file"
 ```
