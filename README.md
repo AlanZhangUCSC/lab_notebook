@@ -3157,7 +3157,8 @@ nucmer output:
 103745  116817  58344   45258   13073   13087   99.19   156819  156819  8.34    8.35    NC_028350.1     NC_028350.1
 ```
 
-Seems like there's a small gap at 59092-59195 and 102886-102997, ~100 bps, while the rest of the alignment is very high identity. The sizes of the inverted repeats are also consistent with the expected IR regions after merging... I will 
+Seems like there's a small gap at 59092-59195 and 102886-102997, ~100 bps, while the rest of the alignment is very high
+identity. The sizes of the inverted repeats are also consistent with the expected IR regions after merging... I will 
 manually merge the IR regions to 45258-72879 and 89153-116817. 
 
 ```
@@ -3253,7 +3254,7 @@ time /private/home/bzhan146/tools/blast/ncbi-blast-2.17.0+/bin/blastn \
   -taxids 9443 \
   -evalue 1e-10 \
   -dust no \
-  -perc_identity 70 \
+  -perc_identity 80 \
   -max_target_seqs 10000 \
   -outfmt '6 qseqid sseqid staxid ssciname pident length mismatch gapopen qstart qend sstart send evalue bitscore sstrand qseq sseq' \
   -num_threads 16 \
@@ -3412,4 +3413,258 @@ for f in beds/*.bed; do
     -fo "${db}.alu.fa" \
     2> "${db}.alu.log"
 done
+```
+
+## 4/22/2026
+
+I did some sanity check and then sent the tree and alignment to Zihao.
+
+## 4/23/2026
+
+### Salicaceae Tree
+
+I compared my tree with Zihao's tree and alignment. They are highly similar but some nodes still have pretty low
+support. I think I will go ahead and use my tree and alignment to build a panMAT.
+
+### Pimate Alu Tree
+
+#### BLAST
+
+Blast finished running for the `primate_alu.ad.curated.fa`. Now I have a `primate_alu.ad.curated.blast_hits.txt` to
+parse.
+
+(Mostly) Claude and I wrote a script `filter_blast_out.py` to filter the blast hits:
+
+Post-processes BLAST outfmt 6 output to remove redundant overlapping HSPs within each (query, subject) group, keeping
+the highest-bitscore hit when two hits overlap beyond a configurable threshold. Applies optional pre-filters for minimum
+alignment length and percent identity, and can treat plus/minus strand hits as either independent or competing. Streams
+the input file for bounded memory usage regardless of file size.
+
+```bash
+python3 filter_blast_out.py primate_alu.ad.curated.blast_hits.txt \
+  --min-pident 80 --min-length 200 -o primate_alu.hq.tsv --stats
+```
+
+#### UCSC rmsk track
+
+I want to get a quick statistics on the Alu sequences from the UCSC rmsk track.
+
+Get a quick counts on the Alu families for each assembly.
+
+```bash
+ for file in ../beds/*bed; do
+  prefix=$(basename $file .alu.bed)
+  cut -f4 $file | sort | uniq -c | awk -v OFS='\t' '{print $2,$1}' > ${prefix}.alu_counts.tsv &
+done; wait &
+```
+
+Then merge the counts into a single file.
+
+```bash
+python3 -c "
+import glob, csv
+from collections import defaultdict
+
+files = sorted(f for f in glob.glob('*alu_counts.tsv') if not f.startswith('merged'))
+samples = [f.replace('.alu_counts.tsv', '') for f in files]
+counts = defaultdict(dict)
+for f in files:
+    for row in csv.reader(open(f), delimiter='\t'):
+        counts[row[0]][f] = row[1]
+
+families = sorted(counts)
+print('\t'.join(['Alu', 'total'] + samples))
+for fam in families:
+    vals = [counts[fam].get(f, '0') for f in files]
+    total = sum(int(v) for v in vals)
+    print('\t'.join([fam, str(total)] + vals))
+" > merged_alu_counts.tsv
+```
+
+Ok I think I will start with AluYe5... It's a young, hominoid-biased AluY subfamily with ~12,400 copies concentrated in
+great apes. It's a good pilot because the size is computationally tractable and the sequences retain strong
+phylogenetic signal without saturation.
+
+## 4/24/2026
+
+### Hominoid AluYe5 Tree
+
+As said yesterday, I will start with AluYe5...
+
+Data filtering:
+- **I will not include non-hominoid AluYe5 sequences here.** Seems like a small number of AluYe5 sequences are also
+present in non-hominoid assemblies. They are probably mis-annotated;  
+- **I Will skip over the Gibbon assembly.** The Gibbon assembly only has AluJb, AluSx, AluY, FLAM_C, and FRAM annotated,
+andquite a lot of them too. It's likely annotated with a coarser Alu library that only recognized the top-level
+subfamilies (AluJ, AluS, AluY). 
+- **I will skip over the T2T assembly.** hg38 is probably better annotated. And since other assemblies are non-T2T, I
+will keep it consistent.
+
+Get all the AluYe5 sequences from the filtered assemblies.
+
+```bash
+for assembly in hg38 hs1 panTro6 panPan3 gorGor6 ponAbe3 nomLeu3; do
+  seqkit grep -rp 'AluYe5::' alu_fastas/${assembly}.alu.fa >> hominoid_aluye5.fa
+done
+seqkit seq -uv hominoid_aluye5.fa > tmp && mv tmp hominoid_aluye5.fa
+seqkit rmdup -s -P hominoid_aluye5.fa > tmp && mv tmp hominoid_aluye5.fa
+```
+
+Seems like most sequences are near full length. Gonna filter out the sequences that are less than 250 bp.
+
+```bash
+seqkit seq -g -m 250 hominoid_aluye5.fa  > hominoid_aluye5.len_filtered.fa
+```
+
+Still have a lot of sequences left. Good.
+
+```bash
+$ seqkit stats -a hominoid_aluye5.fa hominoid_aluye5.len_filtered.fa 2> /dev/null 
+file                             format  type  num_seqs    sum_len  min_len  avg_len  max_len   Q1   Q2   Q3  sum_gap  N50  N50_num  Q20(%)  Q30(%)  AvgQual  GC(%)
+hominoid_aluye5.fa               FASTA   DNA     10,677  2,793,007       11    261.6      373  280  297  305        0  300       53       0       0        0  54.46
+hominoid_aluye5.len_filtered.fa  FASTA   DNA      8,526  2,548,063      250    298.9      373  294  301  307        0  301       52       0       0        0  54.79
+```
+
+Also need to trim off the polyA tail from the sequences. I'll just use mafft to align each sequence to the consensus to
+find the polyA tails then trim them off using a simple python script `trim_polya.py`.
+
+```bash
+ls hominoid_aluye5_split/*.fa | parallel --jobs 64 '
+  prefix=$(basename {} .fa)
+  mafft --auto --thread 1 <(cat aluye5.fa {}) 2>/dev/null > mafft_out/${prefix}.mafft.aln
+'
+
+parallel -j 64 'f={}; p=$(basename "$f" .mafft.aln); python3 trim_polya.py "$f" -o "trimmed/${p}.polyATrimmed.fa"' ::: mafft_out/*
+cat trimmed/AluYe5_*polyATrimmed.fa > hominoid_aluye5.trimmed.fa
+```
+
+
+I should also remove sequences that are too divergent from the consensus sequence... these could be misannotated
+sequences from older Alus.
+
+Use bwa mem to align the sequences to the consensus sequence then discard sequences that fail to align and secondary
+aligments.
+
+```bash
+bwa index consensus/aluye5.polyATrimmed.fa
+bwa mem -k15 -t 32 consensus/aluye5.polyATrimmed.fa hominoid_aluye5.trimmed.fa  | samtools view -h -F 2308 - > aluye5_to_consensus.mapped.sam
+samtools fastq aluye5_to_consensus.mapped.sam | seqkit fq2fa > aluye5_to_consensus.mapped.fa
+```
+
+Since the sequences are quite short, I will use mafft to align the sequences then trimal. 
+
+```bash
+mafft --auto aluye5_to_consensus.mapped.fa --thread 32 > aluye5_to_consensus.mapped.auto.aln
+mafft --retree 2 --maxiterate 1000 --thread 32 aluye5_to_consensus.mapped.fa > aluye5_to_consensus.mapped.retree.aln
+trimal -in aluye5_to_consensus.mapped.auto.aln -out aluye5_to_consensus.mapped.auto.trimmed.aln -automated1
+trimal -in aluye5_to_consensus.mapped.retree.aln -out aluye5_to_consensus.mapped.retree.trimmed.aln -automated1
+```
+
+Run iqtree on both the untrimmed and trimmed sequences just to see the difference.
+
+```bash
+iqtree -s aluye5_to_consensus.mapped.auto.aln -m MFP -B 1000 -T 32 --prefix iqtree_results/aluye5_to_consensus.mapped.auto
+iqtree -s aluye5_to_consensus.mapped.auto.trimmed.aln -m MFP -B 1000 -T 32 --prefix iqtree_results/aluye5_to_consensus.mapped.auto.trimmed
+```
+
+> [!WARNING]
+> Deduplicate exact substring? Tempted but unsure.
+
+## 4/26/2026
+
+### Hominoid AluYe5 Tree
+
+iqtree is still running for both the untrimmed and trimmed sequences, and it seems like it's going to take a while. In
+the meantime, I will also try DIPPER to build the tree. For completeness, I will also align the sequences with TWILIGHT.
+
+Build a guide tree using DIPPER then run TWILIGHT and trim the alignment using trimal.
+
+```bash
+dipper_cpu -i r -I aluye5_to_consensus.mapped.fa -O dipper_results/aluye5_to_consensus.mapped.dipper.guide.nwk
+twilight -t dipper_results/aluye5_to_consensus.mapped.dipper.guide.nwk -i aluye5_to_consensus.mapped.fa -o aluye5_to_consensus.mapped.twilight.aln -v -w --check -r 0.999  --cpu-only -C 32
+trimal -in aluye5_to_consensus.mapped.twilight.aln -out aluye5_to_consensus.mapped.twilight.trimmed.aln -automated1
+```
+
+Convert bases to uppercase then run DIPPER on all the aligned and trimmed sequences (mafft-auto, mafft-auto-trimmed,
+mafft-retree, mafft-retree-trimmed, twilight, twilight-trimmed).
+
+```bash
+seqkit seq -u -w 0 -o aluye5_to_consensus.mapped.auto.upper.aln aluye5_to_consensus.mapped.auto.aln
+seqkit seq -u -w 0 -o aluye5_to_consensus.mapped.auto.trimmed.upper.aln aluye5_to_consensus.mapped.auto.trimmed.aln
+seqkit seq -u -w 0 -o aluye5_to_consensus.mapped.retree.upper.aln aluye5_to_consensus.mapped.retree.aln
+seqkit seq -u -w 0 -o aluye5_to_consensus.mapped.retree.trimmed.upper.aln aluye5_to_consensus.mapped.retree.trimmed.aln
+seqkit seq -u -w 0 -o aluye5_to_consensus.mapped.twilight.upper.aln aluye5_to_consensus.mapped.twilight.aln
+seqkit seq -u -w 0 -o aluye5_to_consensus.mapped.twilight.trimmed.upper.aln aluye5_to_consensus.mapped.twilight.trimmed.aln
+
+for file in *upper.aln; do prefix=$(basename $file .upper.aln); mv $file ${prefix}.aln; done
+
+dipper_cpu -i m -I aluye5_to_consensus.mapped.auto.aln -O dipper_results/aluye5_to_consensus.mapped.auto.nwk -d 4 --threads 32
+dipper_cpu -i m -I aluye5_to_consensus.mapped.auto.trimmed.aln -O dipper_results/aluye5_to_consensus.mapped.auto.trimmed.nwk -d 4 --threads 32
+dipper_cpu -i m -I aluye5_to_consensus.mapped.retree.aln -O dipper_results/aluye5_to_consensus.mapped.retree.nwk -d 4 --threads 32
+dipper_cpu -i m -I aluye5_to_consensus.mapped.retree.trimmed.aln -O dipper_results/aluye5_to_consensus.mapped.retree.trimmed.nwk -d 4 --threads 32
+dipper_cpu -i m -I aluye5_to_consensus.mapped.twilight.aln -O dipper_results/aluye5_to_consensus.mapped.twilight.nwk -d 4 --threads 32
+dipper_cpu -i m -I aluye5_to_consensus.mapped.twilight.trimmed.aln -O dipper_results/aluye5_to_consensus.mapped.twilight.trimmed.nwk -d 4 --threads 32
+```
+
+Then build a PanMAT out of each tree and alignment. NOTE: For .trimmed.nwk tree, use the untrimmed alignment.
+
+```bash 
+/scratch1/alan/panmap/build/bin/panmanUtils -M aluye5_to_consensus.mapped.auto.aln -N dipper_results/aluye5_to_consensus.mapped.auto.nwk -o aluye5_to_consensus.mapped.auto.panman
+/scratch1/alan/panmap/build/bin/panmanUtils -M aluye5_to_consensus.mapped.auto.aln -N dipper_results/aluye5_to_consensus.mapped.auto.trimmed.nwk -o aluye5_to_consensus.mapped.auto.trimmed.panman
+/scratch1/alan/panmap/build/bin/panmanUtils -M aluye5_to_consensus.mapped.retree.aln -N dipper_results/aluye5_to_consensus.mapped.retree.nwk -o aluye5_to_consensus.mapped.retree.panman
+/scratch1/alan/panmap/build/bin/panmanUtils -M aluye5_to_consensus.mapped.retree.aln -N dipper_results/aluye5_to_consensus.mapped.retree.trimmed.nwk -o aluye5_to_consensus.mapped.retree.trimmed.panman
+/scratch1/alan/panmap/build/bin/panmanUtils -M aluye5_to_consensus.mapped.twilight.aln -N dipper_results/aluye5_to_consensus.mapped.twilight.nwk -o aluye5_to_consensus.mapped.twilight.panman
+/scratch1/alan/panmap/build/bin/panmanUtils -M aluye5_to_consensus.mapped.twilight.aln -N dipper_results/aluye5_to_consensus.mapped.twilight.trimmed.nwk -o aluye5_to_consensus.mapped.twilight.trimmed.panman
+```
+
+Get some stats on the PanMATs
+
+```bash
+(for file in *panman; do   echo "=== FILE: $file ===";   /scratch1/alan/panmap/build/bin/panmanUtils -s "$file" 2>/dev/null; done) | awk '
+BEGIN {
+  OFS="\t"
+  n_fields = split("file,nodes,samples,substitutions,insertions,deletions,inversions,max_depth,mean_depth,block_ins,block_del,block_inv,block_dup,block_trans", headers, ",")
+  for (i = 1; i <= n_fields; i++) printf "%s%s", headers[i], (i==n_fields ? "\n" : OFS)
+}
+/^=== FILE: / { if (file != "") print_row(); reset(); file = $3; next }
+/^Total Nodes in Tree:/         { nodes = $5 }
+/^Total Samples in Tree:/       { samples = $5 }
+/^Total Substitutions:/         { subs = $3 }
+/^Total Insertions:/            { ins = $3 }
+/^Total Deletions:/             { dels = $3 }
+/^Total Inversions:/            { invs = $3 }
+/^Max Tree Depth:/              { maxd = $4 }
+/^Mean Tree Depth:/             { meand = $4 }
+/^Total Block Insertions:/      { bins = $4 }
+/^Total Block Deletions:/       { bdel = $4 }
+/^Total Block Inversion:/       { binv = $4 }
+/^Total Block Duplications:/    { bdup = $4 }
+/^Total Block Translocation:/   { btrans = $4 }
+END { if (file != "") print_row() }
+function print_row() {
+  print file, nodes, samples, subs, ins, dels, invs, maxd, meand, bins, bdel, binv, bdup, btrans
+}
+function reset() {
+  nodes=samples=subs=ins=dels=invs=maxd=meand=bins=bdel=binv=bdup=btrans=""
+}
+' > all_stats.tsv
+```
+
+Look at some stats
+
+```bash
+$ cut -f 1-6,8,9 all_stats.tsv  | column -t
+file                                                nodes  samples  substitutions  insertions  deletions  max_depth  mean_depth
+aluye5_to_consensus.mapped.auto.panman              16533  8267     92806          11219       16065      85         52.0646
+aluye5_to_consensus.mapped.auto.trimmed.panman      16533  8267     96264          10687       16153      69         42.2331
+aluye5_to_consensus.mapped.retree.panman            16533  8267     92520          10676       15661      78         43.4753
+aluye5_to_consensus.mapped.retree.trimmed.panman    16533  8267     92854          10509       15798      73         45.0177
+aluye5_to_consensus.mapped.twilight.panman          16533  8267     92958          12471       18506      76         44.3179
+aluye5_to_consensus.mapped.twilight.trimmed.panman  16533  8267     93247          12354       18775      82         49.7084
+```
+
+Plot the stats
+
+```bash
+python panmat_stats.py panmans/all_stats.tsv -o panmat_stats
 ```
