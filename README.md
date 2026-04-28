@@ -3498,7 +3498,8 @@ present in non-hominoid assemblies. They are probably mis-annotated;
 andquite a lot of them too. It's likely annotated with a coarser Alu library that only recognized the top-level
 subfamilies (AluJ, AluS, AluY). 
 - **I will skip over the T2T assembly.** hg38 is probably better annotated. And since other assemblies are non-T2T, I
-will keep it consistent.
+will keep it consistent... *NOTE (4/27/2026) Oops, I actually forgot to exclude the T2T assembly and have already done 
+a lot of the downstream stuff... Ig I'll just keep it for now.*
 
 Get all the AluYe5 sequences from the filtered assemblies.
 
@@ -3667,4 +3668,95 @@ Plot the stats
 
 ```bash
 python panmat_stats.py panmans/all_stats.tsv -o panmat_stats
+```
+
+## 4/27/2026
+
+### Salicaceae chloroplast tree
+
+I plan to first build an individual panMAT for each chloroplast region then concatenate them together to a single 
+PanMAT.
+
+First build a panMAT for each chloroplast region using the iqtree and alignment files. Actually need to first remove the
+outgroup, trim all gap columns, then do upper.
+
+```bash
+mkdir -p /scratch1/alan/lab_notebook/panmama/salicaceae/data/salicaceae/salicaceae_panMAT && cd /scratch1/alan/lab_notebook/panmama/salicaceae/data/salicaceae/salicaceae_panMAT
+
+cp ../salicaceae_regions/mummer_regions/alignments/LSC_oriented.merged.mafft-auto.aln .
+cp ../salicaceae_regions/mummer_regions/alignments/SSC_oriented.merged.mafft-auto.aln .
+cp ../salicaceae_regions/mummer_regions/alignments/IRa_oriented.merged.mafft-auto.aln .
+cp ../salicaceae_regions/mummer_regions/alignments/IRb_oriented.merged.mafft-auto.aln .
+
+seqkit grep -v -p 'OM177182.2' IRa_oriented.merged.mafft-auto.aln > tmp && mv tmp IRa_oriented.merged.mafft-auto.aln
+seqkit grep -v -p 'OM177182.2' IRb_oriented.merged.mafft-auto.aln > tmp && mv tmp IRb_oriented.merged.mafft-auto.aln
+seqkit grep -v -p 'OM177182.2' LSC_oriented.merged.mafft-auto.aln > tmp && mv tmp LSC_oriented.merged.mafft-auto.aln
+seqkit grep -v -p 'OM177182.2' SSC_oriented.merged.mafft-auto.aln > tmp && mv tmp SSC_oriented.merged.mafft-auto.aln
+
+trimal -in IRa_oriented.merged.mafft-auto.aln -out tmp -noallgaps && mv tmp IRa_oriented.merged.mafft-auto.aln
+trimal -in IRb_oriented.merged.mafft-auto.aln -out tmp -noallgaps && mv tmp IRb_oriented.merged.mafft-auto.aln
+trimal -in LSC_oriented.merged.mafft-auto.aln -out tmp -noallgaps && mv tmp LSC_oriented.merged.mafft-auto.aln
+trimal -in SSC_oriented.merged.mafft-auto.aln -out tmp -noallgaps && mv tmp SSC_oriented.merged.mafft-auto.aln
+
+seqkit seq -u -w 0 -o IRa_oriented.merged.mafft-auto.upper.aln IRa_oriented.merged.mafft-auto.aln
+seqkit seq -u -w 0 -o LSC_oriented.merged.mafft-auto.upper.aln LSC_oriented.merged.mafft-auto.aln
+seqkit seq -u -w 0 -o SSC_oriented.merged.mafft-auto.upper.aln SSC_oriented.merged.mafft-auto.aln
+seqkit seq -u -w 0 -o IRb_oriented.merged.mafft-auto.upper.aln IRb_oriented.merged.mafft-auto.aln
+
+/scratch1/alan/panmap/build/bin/panmanUtils -M alignment/SSC_oriented.merged.mafft-auto.upper.aln -N ../salicaceae_regions/mummer_regions/concatenated/iqtree_results/partition.txt.root_pruned.nwk -o SSC_oriented &
+/scratch1/alan/panmap/build/bin/panmanUtils -M alignment/LSC_oriented.merged.mafft-auto.upper.aln -N ../salicaceae_regions/mummer_regions/concatenated/iqtree_results/partition.txt.root_pruned.nwk -o LSC_oriented &
+/scratch1/alan/panmap/build/bin/panmanUtils -M alignment/IRa_oriented.merged.mafft-auto.upper.aln -N ../salicaceae_regions/mummer_regions/concatenated/iqtree_results/partition.txt.root_pruned.nwk -o IRa_oriented &
+/scratch1/alan/panmap/build/bin/panmanUtils -M alignment/IRb_oriented.merged.mafft-auto.upper.aln -N ../salicaceae_regions/mummer_regions/concatenated/iqtree_results/partition.txt.root_pruned.nwk -o IRb_oriented &
+wait
+```
+
+Look at some stats
+
+```bash
+$ cut -f 1-6,8,9 all_stats.tsv  | column -t
+file                 nodes  samples  substitutions  insertions  deletions  max_depth  mean_depth
+IRa_oriented.panman  243    122      2023           1906        1598       23         12.959
+IRb_oriented.panman  243    122      1975           1903        1682       23         12.959
+LSC_oriented.panman  243    122      25477          18636       13699      23         12.959
+SSC_oriented.panman  243    122      6930           3667        2040       23         12.959
+```
+
+I added some code to concatenate the panMATs into a single panMAN and opened a PR to the main panman repo.
+
+### AluYe5 tree
+
+I'm goign to make a meta file mapping the renamed aluye5 sequences back to their original headers and origin.
+
+Refer back to [4/24/2026](#4242026) for the original parsing and filtering of the AluYe5 sequences.
+
+The original headers (e.g. `AluYe5::chr1:1280182-1280482(+)`) do not record which assembly each sequence came from.
+Re-scan each per-assembly file and emit a TSV with sequence ID and source assembly.
+
+```bash
+cd /scratch1/alan/lab_notebook/tes/alu_ucsc/by_family/aluye5
+for assembly in hg38 hs1 panTro6 panPan3 gorGor6 ponAbe3 nomLeu3; do
+  seqkit grep -rp 'AluYe5::' alu_fastas/${assembly}.alu.fa \
+    | seqkit seq -n -i \
+    | awk -v a="$assembly" 'BEGIN{OFS="\t"} {print $1, a}'
+done > hominoid_aluye5.assembly_map.tsv
+```
+
+Merge in species-level metadata from `ucsc_primate_assemblies.selected.tsv`.
+
+```bash
+awk -F'\t' 'BEGIN{OFS="\t"}
+  NR==FNR { meta[$1] = $2 OFS $3 OFS $4 OFS $5; next }
+  { print $1, $2, meta[$2] }
+' /scratch1/alan/lab_notebook/tes/alu_ucsc/ucsc_primate_assemblies.selected.tsv hominoid_aluye5.assembly_map.tsv \
+  > hominoid_aluye5.assembly_map.full.tsv
+```
+
+Join the rename table to the metadata table so each new ID carries its full metadata.
+
+```bash
+awk -F'\t' 'BEGIN{OFS="\t"}
+  NR==FNR { meta[$1] = $0; next }
+  $2 in meta { print $1, meta[$2] }
+' hominoid_aluye5.assembly_map.full.tsv rename_id_map.tsv \
+  > renamed_meta.tsv
 ```
