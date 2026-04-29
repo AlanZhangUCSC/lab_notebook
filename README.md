@@ -3969,3 +3969,48 @@ $ awk '!/^#/ && !seen[$3]++ {print $3"\t"$1"\t"$14"\t"$13}' hs1_outcluster.hmm_h
     810 AluYe5#SINE/Alu
 863
 ```
+
+#### AluYxx
+
+I think I will just get all the AluYxx sequences of all the primate assemblies and get their profile scores
+against the primate alu hmm profiles.
+
+Following steps recorded in [4/24/2026](#4242026).
+
+Get all the AluYxx sequences of all the primate assemblies with length > 250.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_ucsc/by_family/aluyxx
+mkdir -p $wdir && cd $wdir
+for fa in ../../alu_fastas/*.fa; do
+  assembly=$(basename $fa .alu.fa)
+  seqkit grep -rp 'AluY[^:]*::' $fa | seqkit replace -p '^' -r "${assembly}::" >> primate_aluyxx.fa
+done
+seqkit seq -uvg -m 250 primate_aluyxx.fa > primate_aluyxx.len_filtered.fa
+```
+
+Check how many sequences we have
+
+```console
+$ seqkit stats primate_aluyxx.fa primate_aluyxx.len_filtered.fa 2> /dev/null 
+file                            format  type   num_seqs      sum_len  min_len  avg_len  max_len
+primate_aluyxx.fa               FASTA   DNA   2,614,999  691,075,124       11    264.3      816
+primate_aluyxx.len_filtered.fa  FASTA   DNA   2,057,453  617,776,798      250    300.3      816
+```
+
+Run nhmmscan to score the primate alu yxx sequences against the primate alu hmm profile. Gonna do it on both the curated
+and the full primate alu hmm profile from famdb.
+
+```bash
+nhmmscan --cpu 10 --noali -o /dev/null \
+  --tblout >(awk '!/^#/ { if ($3 != p) {c=0; p=$3} if (c++ < 5) print }' > aluyxx.top5.curated.tblout) \
+  ../../../primate_alus/hmm/primate_alu.ad.curated.hmm primate_aluyxx.len_filtered.fa
+
+# actually not gonna do this because it takes too long
+nhmmscan --cpu 10 --noali -o /dev/null \
+  --tblout >(awk '!/^#/ { if ($3 != p) {c=0; p=$3} if (c++ < 5) print }' > aluyxx.top5.tblout) \
+  ../../../primate_alus/hmm/primate_alu.ad.hmm primate_aluyxx.len_filtered.fa
+```
+
+It still will take too long. I split up the fasta into 50 fastas and made a slurm script to run it on phoenix in
+parallel. See `bzhan146@emerald.prism:/private/home/bzhan146/scripts/tes/run_blast.sh`.
