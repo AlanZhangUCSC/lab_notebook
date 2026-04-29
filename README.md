@@ -4014,3 +4014,55 @@ nhmmscan --cpu 10 --noali -o /dev/null \
 
 It still will take too long. I split up the fasta into 50 fastas and made a slurm script to run it on phoenix in
 parallel. See `bzhan146@emerald.prism:/private/home/bzhan146/scripts/tes/run_blast.sh`.
+
+## 4/29/2026
+
+### Salicaceae tree
+
+Concatenate the individual salicaceae panMANs into a single panMAN.
+
+```bash
+
+```
+
+Rerun Zihao and Bianca's data using the new tree.
+
+```bash
+
+```
+
+### AluYxx tree
+
+After transferring the split nhmmscan results from phoenix to silverbullet, I can now merge them and reorganize them
+into a tabular format that are easier to parse for downstream analysis.
+
+```bash
+
+```
+
+As a sanity check, I'm going to confirm that the in-hs1-AluYe5-cluster sequences that are mislabeled align well to their top
+Alu profile hits and align better than to AluYe5.
+
+```bash
+
+```
+
+Now get the AluYe5 related copies from hominoid assemblies:
+
+1. Copies labeled as AluYe5 from UCSC genome browser, `aluye5_labeled`
+2. Copies whose top hit is AluYe5, `aluye5_tophit`
+3. Copies labeled as AluYe5 from UCSC genome browser and whose top hit is AluYe5, `aluye5_labeled_tophit`
+
+```bash
+
+```
+
+(For future me, if possible us `aluye5_labeled_tophit` if it's not too much fewer than `aluye5_tophit` to be conservative.)
+
+Do preprocessing as before (refer to ...) and run alignment, dipper, and panmanUtils again.
+
+```bash
+
+```
+
+Now looking for hominoid read samples and give it a try!
