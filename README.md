@@ -3492,11 +3492,14 @@ phylogenetic signal without saturation.
 As said yesterday, I will start with AluYe5...
 
 Data filtering:
+
 - **I will not include non-hominoid AluYe5 sequences here.** Seems like a small number of AluYe5 sequences are also
 present in non-hominoid assemblies. They are probably mis-annotated;  
+
 - **I Will skip over the Gibbon assembly.** The Gibbon assembly only has AluJb, AluSx, AluY, FLAM_C, and FRAM annotated,
 andquite a lot of them too. It's likely annotated with a coarser Alu library that only recognized the top-level
 subfamilies (AluJ, AluS, AluY). 
+
 - **I will skip over the T2T assembly.** hg38 is probably better annotated. And since other assemblies are non-T2T, I
 will keep it consistent... *NOTE (4/27/2026) Oops, I actually forgot to exclude the T2T assembly and have already done 
 a lot of the downstream stuff... Ig I'll just keep it for now.*
@@ -3524,6 +3527,12 @@ $ seqkit stats -a hominoid_aluye5.fa hominoid_aluye5.len_filtered.fa 2> /dev/nul
 file                             format  type  num_seqs    sum_len  min_len  avg_len  max_len   Q1   Q2   Q3  sum_gap  N50  N50_num  Q20(%)  Q30(%)  AvgQual  GC(%)
 hominoid_aluye5.fa               FASTA   DNA     10,677  2,793,007       11    261.6      373  280  297  305        0  300       53       0       0        0  54.46
 hominoid_aluye5.len_filtered.fa  FASTA   DNA      8,526  2,548,063      250    298.9      373  294  301  307        0  301       52       0       0        0  54.79
+```
+
+Gonna rename the headers so downstream tools don't get confused by special characters.
+
+```bash
+seqkit replace -p '.+' -r 'AluYe5_{nr}' hominoid_aluye5.len_filtered.fa > hominoid_aluye5.len_filtered.renamed.fa
 ```
 
 Also need to trim off the polyA tail from the sequences. I'll just use mafft to align each sequence to the consensus to
@@ -3735,7 +3744,7 @@ Re-scan each per-assembly file and emit a TSV with sequence ID and source assemb
 ```bash
 cd /scratch1/alan/lab_notebook/tes/alu_ucsc/by_family/aluye5
 for assembly in hg38 hs1 panTro6 panPan3 gorGor6 ponAbe3 nomLeu3; do
-  seqkit grep -rp 'AluYe5::' alu_fastas/${assembly}.alu.fa \
+  seqkit grep -rp 'AluYe5::' ../../alu_fastas/${assembly}.alu.fa \
     | seqkit seq -n -i \
     | awk -v a="$assembly" 'BEGIN{OFS="\t"} {print $1, a}'
 done > hominoid_aluye5.assembly_map.tsv
@@ -3759,4 +3768,204 @@ awk -F'\t' 'BEGIN{OFS="\t"}
   $2 in meta { print $1, meta[$2] }
 ' hominoid_aluye5.assembly_map.full.tsv rename_id_map.tsv \
   > renamed_meta.tsv
+```
+
+## 4/28/2026
+
+### AluYe5 tree
+
+Looking at the AluYe5 tree on taxonium, it seems like there's a major cluster of nodes that are almost exclusively of
+AluYe5 copies from the T2T assembly (hs1), while the rest of the nodes are interspersed with copies from hg38 and other
+primate assemblies...
+
+Biologically relevent? Not sure. Too early to say.
+
+Did I remove mostly hg38 sequences when I did deduplication? Gonna add it back and see what's up. Also maybe I shouldn't
+have removed the duplicate sequences.
+
+Recover the deduplicated sequences.
+
+```bash
+cd /scratch1/alan/lab_notebook/tes/alu_ucsc/by_family/aluye5
+for assembly in hg38 hs1 panTro6 panPan3 gorGor6 ponAbe3 nomLeu3; do
+  seqkit grep -rp 'AluYe5::' ../../alu_fastas/${assembly}.alu.fa >> hominoid_aluye5_withdup.fa
+done
+seqkit seq -guv -m 250 hominoid_aluye5_withdup.fa  > hominoid_aluye5_withdup.len_filtered.fa
+comm -13 <(seqkit seq -n hominoid_aluye5.len_filtered.fa | sort) <(seqkit seq -n hominoid_aluye5_withdup.len_filtered.fa | sort) > deduped_ids.txt
+seqkit grep -n -f deduped_ids.txt hominoid_aluye5_withdup.len_filtered.fa > deduped_seqs.fa
+
+# reorganize the files
+mkdir removed && mv deduped_* removed/ && cd removed
+```
+
+Then do the filtering again (refer to [4/24/2026](#4242026), followed exactly).
+
+Rename the headers again, starting from the last sequence from the original file.
+
+```bash
+seqkit replace -p '.+' -r 'AluYe5_{nr}' deduped.mapped.fa   | awk '/^>/{n++; sub(/[0-9]+$/, n+8526)} 1' > deduped.mapped.renamed.fa
+```
+
+Gonna align the duplicated sequences to the existing alignment files I've made using mafft with `--add --keeplength`.
+(There are way faster ways to do this but this avoids potential buggy scripts.)
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_ucsc/by_family/aluye5/alignment/dup_added
+mkdir -p $wdir && cd $wdir
+cp ../../filtered/aluye5_to_consensus.mapped.fa  ../../removed/deduped.mapped.renamed.fa .
+python3 add_dups.py \            
+  --rep-fa  aluye5_to_consensus.mapped.fa \
+  --dups-fa deduped.mapped.renamed.fa \
+  --aln     ../aluye5_to_consensus.mapped.auto.aln \
+            ../aluye5_to_consensus.mapped.retree.aln \
+            ../aluye5_to_consensus.mapped.twilight.aln
+mv ../*expanded.aln .
+```
+
+I just realized I should have deduplicated the alignment files (as they were polyA-deduplicated after the initial dedup)
+before trimming then apply the same trimming to the original alignment files as duplicated sequences can bias towards
+duplicated sequences.
+
+I just wrote a simple script to do that. Gonna run it on the dedup-added alignment files as well as the original
+alignment files.
+
+```bash
+for file in $(find . -maxdepth 2 -name "*aln" ! -path "./backup_alns*"); do
+  prefix=$(echo $file | sed 's/.aln$//g')
+  bash ~/tools/misc/trimal.sh $file ${prefix}.trimmed.aln &
+done
+wait
+```
+
+Run DIPPER and panmanUtils again.
+
+```bash
+for file in $(find . -maxdepth 2 -name "*aln" ! -path "./backup_alns*"); do
+  prefix=$(basename $file .aln)
+  dipper_cpu -i m -I $file -O ../dipper_results/${prefix}.nwk -d 4 --threads 32
+done
+
+cd /scratch1/alan/lab_notebook/tes/alu_ucsc/by_family/aluye5/panmans
+for file in $(find ../alignment/ -maxdepth 2 -name "*aln" ! -name "*trimmed.aln" ! -path "../alignment/backup_alns*"); do
+  prefix=$(basename $file .aln)
+  /scratch1/alan/panmap/build/bin/panmanUtils -M $file -N ../dipper_results/${prefix}.nwk --threads 32 -o ${prefix}
+  /scratch1/alan/panmap/build/bin/panmanUtils -M $file -N ../dipper_results/${prefix}.trimmed.nwk --threads 32 -o ${prefix}.trimmed
+done
+```
+
+Now let's look at the tree again... Still looks the same? Well, the hs1 assembly does have ~5.8k AluYe5 copies
+while hg38 has ~1.3k and other assemblies have ~1k. So maybe those extra 4k copies for some reason cluster together?
+
+I'm gonna roughly get the substree of the hs1 AluYe5 clusters.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_ucsc/by_family/aluye5/hs1_cluster
+mkdir -p $wdir && cd $wdir
+nw_clade ../dipper_results/aluye5_to_consensus.mapped.retree.expanded.trimmed.nwk AluYe5_3102 AluYe5_4351 > hs1_cluster.nwk
+```
+
+Get AluYe5 copies from hs1 inside the cluster, AluYe5 copies from hs1 but outside of the cluster, and hg38 AluYe5 copies.
+
+```bash
+seqkit seq -g ../alignment/dup_added/aluye5_to_consensus.mapped.retree.expanded.aln > aluye5_polyAtrimmed.fa
+# Get the sequences of the hs1 AluYe5 clusters.
+nw_labels -I hs1_cluster.nwk > hs1_cluster_labels.txt
+sed -e 's/^/^/g' -e 's/$/\\s/g' hs1_cluster_labels.txt | \
+  grep -f - ../renamed_meta_withdup.tsv | \
+  awk '$3 == "hs1"' | \
+  cut -f 1 | \
+  seqkit grep -n -f - aluye5_polyAtrimmed.fa > hs1_incluster.fa
+
+# Get the sequences of the hs1 AluYe5 copies outside of the cluster.
+nw_prune ../dipper_results/aluye5_to_consensus.mapped.retree.expanded.trimmed.nwk $(cat hs1_cluster_labels.txt) > hs1_cluster_comp.nwk
+nw_labels -I hs1_cluster_comp.nwk > hs1_cluster_comp_labels.txt
+sed -e 's/^/^/g' -e 's/$/\\s/g' hs1_cluster_comp_labels.txt | \
+  grep -f - ../renamed_meta_withdup.tsv  | \
+  awk '$3 == "hs1"' | \
+  cut -f1  | \
+  seqkit grep -n -f - aluye5_polyAtrimmed.fa > hs1_outcluster.fa
+
+# Get the sequences of the hg38 AluYe5 copies.
+nw_labels -I ../dipper_results/aluye5_to_consensus.mapped.retree.expanded.trimmed.nwk > all_labels.txt
+comm -12 <(awk '$3 == "hg38"' ../renamed_meta_withdup.tsv  | cut -f 1 | sort) <(sort all_labels.txt) > hg38_labels.txt
+seqkit grep -n -f hg38_labels.txt aluye5_polyAtrimmed.fa > hg38.fa
+```
+
+Take a look at if they have differnet identity-to-consensus distributions
+
+```bash
+for file in hg38.fa  hs1_incluster.fa  hs1_outcluster.fa; do
+   prefix=$(basename $file .fa)
+   bwa mem -k15 ../consensus/aluye5.polyATrimmed.fa $file > ${prefix}.bam
+   samtools calmd -b ${prefix}.bam ../consensus/aluye5.polyATrimmed.fa | samtools sort - > ${prefix}.md.bam
+   samtools index ${prefix}.md.bam
+   python3 extract_identity.py ${prefix}.md.bam ${prefix}.stats.tsv
+done
+python3 plot_comparison.py --samples S1=hg38.stats.tsv S2=hs1_incluster.stats.tsv S3=hs1_outcluster.stats.tsv 
+```
+
+![](tes/alu_ucsc/by_family/aluye5/hs1_cluster/identity_comparison.png)
+
+I looked at the identity distributions across the clade. The hs1 copies within the hs1-only cluster show much lower
+identity to the consensus compared to hs1 copies in the mixed clade. Interestingly, both hg38 copies and hs1 copies
+outside the main hs1 clade have very similar identity distributions.
+
+**chr14 short arm**
+
+![](tes/alu_ucsc/by_family/aluye5/hs1_cluster/chr14_short_arm.igv.png)
+
+**chr15 short arm**
+
+![](tes/alu_ucsc/by_family/aluye5/hs1_cluster/chr15_short_arm.igv.png)
+
+Viewing the positions of the AluYe5 copies on the hs1 on IGV also doesn't show any obvious acrocentric/centromeric
+enrichment. ERRRR.
+
+How closely related are the hs1 copies within the hs1-only cluster?
+
+```bash
+seqkit seq -n  hs1_incluster.fa  | seqkit grep -n -f - ../alignment/dup_added/aluye5_to_consensus.mapped.retree.expanded.aln > hs1_incluster.aln
+python3 majority_consensus.py hs1_incluster.noallgaps.aln  incluster_consensus > hs1_incluster.consensus.fa
+# align to incluster consensus as alignment steps above
+python3 extract_identity.py bams/hs1_incluster.to_incluster_consensus.md.bam  bams/hs1_incluster.to_incluster_consensus.stats.tsv
+tail -n+2 bams/hs1_incluster.to_incluster_consensus.stats.tsv | awk '{sum += $10; sum2 += $11} END {print sum/NR, sum2/NR}'
+```
+
+```
+avg_iden_clip_ignored    avg_iden_clip_penalized
+0.892901                 0.840315
+```
+
+It actually has lower identity than I'd expect...
+
+Is it mislabeled? Could it be some other Alu families? I will use famdb to get the hmm profile of the primate alus then
+run hmmer to the score of all the incluster sequences against all the alu family profiles to see if aluye5 actually is
+the best match
+
+Get the hmm profile of the primate alus from famdb and index it
+
+```bash
+famdb.py -i famdb/ families -f hmm --include-class-in-name --class SINE/Alu -ad 9443 --curated > primate_alu.ad.curated.hmm
+hmmpress primate_alu.ad.curated.hmm 
+```
+
+Run nhmmscan to score the incluster sequences against the primate alu hmm profile
+
+```bash
+nhmmscan --cpu 32 --tblout hs1_incluster.hmm_hits.tblout --noali ../../../../primate_alus/hmm/primate_alu.ad.curated.hmm hs1_incluster.fa
+nhmmscan --cpu 32 --tblout hs1_outcluster.hmm_hits.tblout --noali ../../../../primate_alus/hmm/primate_alu.ad.curated.hmm hs1_outcluster.fa
+nhmmscan --cpu 32 --tblout all_polyAtrimmed.hmm_hits.tblout --noali ../../../../primate_alus/hmm/primate_alu.ad.curated.hmm aluye5_polyAtrimmed.fa
+```
+
+Yep, almost all of the hs1 copies within the hs1-only cluster are mislabeled as aluye5, while the hs1 copies outside of
+the cluster are not mislabeled.
+
+```console
+$ awk '!/^#/ && !seen[$3]++ {print $3"\t"$1"\t"$14"\t"$13}' hs1_incluster.hmm_hits.tblout  | cut -f2 | sort | uniq -c | grep AluYe5 && grep '^>' hs1_incluster.fa | wc -l
+      7 AluYe5#SINE/Alu
+3828
+
+$ awk '!/^#/ && !seen[$3]++ {print $3"\t"$1"\t"$14"\t"$13}' hs1_outcluster.hmm_hits.tblout  | cut -f2 | sort | uniq -c | grep AluYe5 && grep '^>' hs1_outcluster.fa | wc -l
+    810 AluYe5#SINE/Alu
+863
 ```
