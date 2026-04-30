@@ -4022,47 +4022,207 @@ parallel. See `bzhan146@emerald.prism:/private/home/bzhan146/scripts/tes/run_bla
 Concatenate the individual salicaceae panMANs into a single panMAN.
 
 ```bash
+wdir=/scratch1/alan/lab_notebook/panmama/salicaceae/data/salicaceae/salicaceae_panMAT/panmans
 
+cd $wdir
+/scratch1/alan/panmap/build/bin/panmanUtils -C panman_list.txt -O orientation_list.txt -o salicaceae_concatenated
+/scratch1/alan/panmap/build/bin/panmap salicaceae_concatenated.panman --index-mgsr salicaceae_concatenated.idx  -k 15 -s 8 -l 1
 ```
 
 Rerun Zihao and Bianca's data using the new tree.
 
 ```bash
+wdir=/scratch1/alan/lab_notebook/panmama/salicaceae
 
+cd $wdir
+mkdir from_bianca from_zihao
+
+/scratch1/alan/panmap/build/bin/panmap data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman \
+  -i data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.idx \
+  --meta --filter-and-assign \
+  --batch-files-path data/batch.txt \
+  --discard 0.6 --dust 5 -t 16 
+
+/scratch1/alan/panmap/build/bin/panmap data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman \
+  data/from_zihao/KapK.cpDNA.dedup.fastq.gz \
+  -i data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.idx \
+  --meta --filter-and-assign \
+  --discard 0.6 --dust 5 -t 16 \
+  --output results/from_zihao/
 ```
 
-### AluYxx tree
+Now I'm going to write a script that generates a Taxonium/Nextclade json file for viewing the results.
+
+Need to first make a template json file.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/panmama/salicaceae/results
+cd $wdir
+
+# make a short meta file with non-redundant information
+cut -f 1,2,6,7 ../data/salicaceae/meta.tsv  > ../data/salicaceae/meta.short.tsv
+
+# make a template json file using taxonium tools
+newick_to_taxonium -i ../data/salicaceae/salicaceae_regions/mummer_regions/concatenated/iqtree_results/partition.txt.root_pruned.nwk \
+  -m ../data/salicaceae/meta.short.tsv \
+  -c orgName,family,genus \
+  -t Salicaceae \
+  --key_column accession \
+  -o template.json
+
+# Then make a template json file with panman nwk (identical topology as iqtree but have internal node labels anddistorted branch lengths)
+newick_to_taxonium -i ../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman.nwk \
+  -m ../data/salicaceae/meta.short.tsv \
+  -c orgName,family,genus \
+  -t Salicaceae \
+  --key_column accession \
+  -o template.panman.json
+
+# Use iqtree's branch lengths with panman's internal node labels
+python3 merge_taxonium.py --primary template.json --secondary template.panman.json -o template.merged.json
+```
+...to be continued.
+
+### AluYxx (AlueYe5)tree
 
 After transferring the split nhmmscan results from phoenix to silverbullet, I can now merge them and reorganize them
 into a tabular format that are easier to parse for downstream analysis.
 
 ```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_ucsc/by_family/aluyxx
 
+cd $wdir
+# Download the split nhmmscan results from phoenix.
+tar -xvzf hmm_out_split.tar.gz
+cat hmm_out_split/* | awk '{$1=$1; print}' OFS='\t' | cut -f 1-15 > hmm_out.tblout
+# Keep the top 3 hits for each sequence and format the output so that each query is a single row.
+awk -F'\t' -v OFS='\t' '
+  function flush() {
+    if (prev == "") return
+    out = prev
+    for (i = 1; i <= 3; i++) out = out "\t" (i <= n ? hits[i] : "")
+    print out
+  }
+  $3 != prev {
+    flush()
+    prev = $3
+    n = 0
+  }
+  { hits[++n] = $1 "\t" $13 "\t" $14 }
+  END { flush() }
+' hmm_out.tblout > hmm_out.top3.tsv
+# Remove the split directory to clean up space
+rm -r hmm_out_split/
 ```
 
 As a sanity check, I'm going to confirm that the in-hs1-AluYe5-cluster sequences that are mislabeled align well to their top
 Alu profile hits and align better than to AluYe5.
 
 ```bash
-
+qry=$(grep '^hs1::AluYe5' hmm_out.top3.tsv  | awk '$2 != "AluYe5#SINE/Alu"' | head -n1 | cut -f 1)
+seq=$(seqkit grep -n -p $qry primate_aluyxx.len_filtered.fa)
+nhmmscan --cpu 32 ../../../primate_alus/hmm/primate_alu.ad.curated.hmm <(echo "$seq")  | grep -A 30 ">> AluSx1#SINE/Alu"
+nhmmscan --cpu 32 ../../../primate_alus/hmm/primate_alu.ad.curated.hmm <(echo "$seq")  | grep -A 30 ">> AluYe5#SINE/Alu"
 ```
+Yep they align well to their top hits and align better than to AluYe5. Not shown here cuz too long. 
+
 
 Now get the AluYe5 related copies from hominoid assemblies:
 
 1. Copies labeled as AluYe5 from UCSC genome browser, `aluye5_labeled`
 2. Copies whose top hit is AluYe5, `aluye5_tophit`
-3. Copies labeled as AluYe5 from UCSC genome browser and whose top hit is AluYe5, `aluye5_labeled_tophit`
+3. Copies labeled as AluYe5 from UCSC genome browser && whose top hit is AluYe5, `aluye5_labeled_tophit`
 
 ```bash
-
+echo "hg38 hs1 panTro6 panPan3 gorGor6 ponAbe3 nomLeu3" | tr ' ' '\n' | grep -f - hmm_out.top3.tsv | grep "::AluYe5::" > hmm_out.labeled_aluye5.tsv
+echo "hg38 hs1 panTro6 panPan3 gorGor6 ponAbe3 nomLeu3" | tr ' ' '\n' | grep -f - hmm_out.top3.tsv | awk '$2 == "AluYe5#SINE/Alu"' > hmm_out.tophit_aluye5.tsv
+comm -12 <(sort hmm_out.labeled_aluye5.tsv) <(sort hmm_out.tophit_aluye5.tsv) > hmm_out.labeled_tophit_aluye5.tsv
 ```
 
-(For future me, if possible us `aluye5_labeled_tophit` if it's not too much fewer than `aluye5_tophit` to be conservative.)
+```console
+$ wc -l hmm_out.labeled_tophit_aluye5.tsv hmm_out.labeled_aluye5.tsv hmm_out.tophit_aluye5.tsv
+   4793 hmm_out.labeled_tophit_aluye5.tsv
+   9014 hmm_out.labeled_aluye5.tsv
+   9362 hmm_out.tophit_aluye5.tsv
+```
 
-Do preprocessing as before (refer to ...) and run alignment, dipper, and panmanUtils again.
+Hmmm, only 4793 copies are both labeled as AluYe5 and have AluYe5 as their top hit...
+
+```console
+$ awk -F'\t' ' $2 == "AluYe5#SINE/Alu" { print $5 }' hmm_out.top3.tsv | sort | uniq -c | sort -rn | head
+   8198 AluYe6#SINE/Alu
+    780 AluYf1#SINE/Alu
+    698 AluY#SINE/Alu
+    322 AluYk3#SINE/Alu
+     52 AluYm1#SINE/Alu
+     37 PapAnu-1.6#SINE/Alu
+     36 AluYh3#SINE/Alu
+     31 AluYi6#SINE/Alu
+     25 AluSc8#SINE/Alu
+     12 AluSc5#SINE/Alu
+
+$ awk -F'\t' ' $2 == "AluYe6#SINE/Alu" { print $5 }' hmm_out.top3.tsv | sort | uniq -c | sort -rn | head
+   2912 AluYe5#SINE/Alu
+    273 AluYf1#SINE/Alu
+     66 AluYk3#SINE/Alu
+     58 AluY#SINE/Alu
+     28 PapAnu-1.6#SINE/Alu
+     16 AluYc#SINE/Alu
+     12 AluSc8#SINE/Alu
+     10 AluYi6#SINE/Alu
+      8 AluYm1#SINE/Alu
+      8 AluSx3#SINE/Alu
+```
+
+Seems like AluYe5 and AluYe6 are very similar to each other, which make sense since AluYe6 has all 5 of AluYe5's
+diagnostic mutations plus 1 additional one, so they are almost indistinguishable. 
+
+**I will actually just built an AluYeX tree with all AluYeX sequences (which is just AluYe5 and AluYe6 for now).**
+
+Get the AluYe5 and AluYe6 sequences from the hominoid assemblies. Then trim the poly-A tails as before (refer to
+[4/24/2026](#4242026)). Intermediate files are removed to clear up space.
 
 ```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_ucsc/by_family/aluyex
+mkdir -p $wdir && cd $wdir
 
+# Also made a hmm_out.top5.tsv for some more information
+echo "hg38 hs1 panTro6 panPan3 gorGor6 ponAbe3 nomLeu3" | tr ' ' '\n' | sed 's/^/^/g' | grep -f - hmm_out.top5.tsv | \
+  awk '$2 == "AluYe5#SINE/Alu" || $2 == "AluYe6#SINE/Alu"' > aluyex.tsv
+
+# Get fasta
+cut -f 1 aluyex.tsv  | seqkit grep -n -f - ../aluyxx/primate_aluyxx.len_filtered.fa > aluyex.fa
+
+# Followed steps in [4/24/2026](#4242026).
+seqkit stats aluyex.fa aluyex.polyA_trimmed.fa 2> /dev/null 
+sed -e 's/:/_/g' -e 's/([+-])//'  aluyex.polyA_trimmed.fa > aluyex.polyA_trimmed.renamed.fa 
 ```
 
-Now looking for hominoid read samples and give it a try!
+```console
+file                     format  type  num_seqs    sum_len  min_len  avg_len  max_len
+aluyex.fa                FASTA   DNA     12,546  3,774,059      250    300.8      391
+aluyex.polyA_trimmed.fa  FASTA   DNA     12,546  3,497,145      210    278.7      362
+```
+
+Then align using mafft-auto, mafft-retree, and dipper-twilight.
+
+```bash
+mafft --auto aluyex.polyA_trimmed.renamed.fa --thread 32 > aluyex.polyA_trimmed.auto.aln
+mafft --retree 2 --maxiterate 1000 --thread 32 aluyex.polyA_trimmed.renamed.fa > aluyex.polyA_trimmed.retree.aln
+dipper_cpu -i r -I aluyex.polyA_trimmed.renamed.fa -O dipper_results/aluyex.polyA_trimmed.dipper.guide.nwk
+twilight -t dipper_results/aluyex.polyA_trimmed.dipper.guide.nwk -i aluyex.polyA_trimmed.renamed.fa -o aluyex.polyA_trimmed.twilight.aln -v -w --check -r 0.999  --cpu-only -C 32
+
+# Then trim
+trimal -in aluyex.polyA_trimmed.auto.aln -out aluyex.polyA_trimmed.auto.trimmed.aln -automated1
+trimal -in aluyex.polyA_trimmed.retree.aln -out aluyex.polyA_trimmed.retree.trimmed.aln -automated1
+trimal -in aluyex.polyA_trimmed.twilight.aln -out aluyex.polyA_trimmed.twilight.trimmed.aln -automated1
+```
+
+## 4/30/2026
+
+### Salicaceae tree
+
+Continuing from [4/29/2026](#4292026), gonna finish writing the script that generates a Taxonium/Nextclade json file for
+viewing the results.
+
+!!!!!! Rebuild PanMANs with a given consensus!!!!
