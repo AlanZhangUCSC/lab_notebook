@@ -67,11 +67,12 @@ def interpolate_color(t, color_stops, stop_positions):
       return tuple(c0[j] + local_t * (c1[j] - c0[j]) for j in range(3))
   return hex_to_rgb(color_stops[-1])
 
-def get_node_color(read_count, max_read_count, min_read_count=0):
-  color_stops = ["#D3D3D3", "#DE9E9E", "#E96969", "#F43434", "#FF0000"]
+def get_node_color(read_count, max_read_count, min_read_count=0, gamma=0.5):
+  color_stops = ["#F5F5F5", "#F0B5B5", "#EC7676", "#E50000", "#B30000"]
   stop_positions = [0.0, 0.25, 0.5, 0.75, 1.0]
   t = (read_count - min_read_count) / (max_read_count - min_read_count) if (max_read_count - min_read_count) > 0 else 0
   t = max(0.0, min(1.0, t))
+  t = t ** gamma
   return interpolate_color(t, color_stops, stop_positions)
 
 def ladderize(tree):
@@ -105,6 +106,7 @@ parser.add_argument('-c', '--color-by', type=str, default='lca_count', choices=[
 parser.add_argument('-s', '--size-by', type=str, default='lca_subtree_count', choices=['read_count', 'lca_count', 'lca_subtree_count', 'None'], help='Size by read count or LCA count')
 parser.add_argument('-a', '--above-branch-label', type=str, default='lca_count', choices=['read_count', 'lca_count', 'lca_subtree_count', None], help='Above branch label')
 parser.add_argument('-b', '--below-branch-label', type=str, default='lca_subtree_count', choices=['read_count', 'lca_count', 'lca_subtree_count', None], help='Below branch label')
+parser.add_argument('-g', '--gamma', type=float, default=0.5, help='Gamma value for power scale')
 args = parser.parse_args()
 
 nwk_string = ''
@@ -160,7 +162,7 @@ max_read_count = 0
 min_read_count = float('inf')
 with open(args.node_read_counts_file, 'r') as f:
   for line in f:
-    node_label, family, count = line.strip().split('\t')
+    node_label, count, _ = line.strip().split('\t')
     for node_label_clean in node_label.split(','):
       node_label_clean = node_label_clean.replace('_', ' ')
       node_read_counts[node_label_clean] = int(count)
@@ -170,7 +172,7 @@ with open(args.node_read_counts_file, 'r') as f:
 node_read_counts_lca = {}
 with open(args.node_read_counts_lca_file, 'r') as f:
   for line in f:
-    node_label, count_lca = line.strip().split()
+    node_label, count_lca, _ = line.strip().split()
     for node_label_clean in node_label.split(','):
       node_label_clean = node_label_clean.replace('_', ' ')
       count_lca = int(count_lca)
@@ -268,11 +270,11 @@ panel = plt.axes([
 for node in tree.postorder_node_iter():
   node_label = node.taxon.label if node.taxon else node.label
   if args.color_by == 'read_count':
-    branch_color = get_node_color(node_read_counts.get(node_label, 0), max_read_count, min_read_count)
+    branch_color = get_node_color(node_read_counts.get(node_label, 0), max_read_count, min_read_count, args.gamma)
   elif args.color_by == 'lca_count':
-    branch_color = get_node_color(node_lca_count.get(node_label, 0), max_node_lca_count, min_node_lca_count)
+    branch_color = get_node_color(node_lca_count.get(node_label, 0), max_node_lca_count, min_node_lca_count, args.gamma)
   elif args.color_by == 'lca_subtree_count':
-    branch_color = get_node_color(node_subtree_lca_count.get(node_label, 0), max_node_subtree_lca_count, min_node_subtree_lca_count)
+    branch_color = get_node_color(node_subtree_lca_count.get(node_label, 0), max_node_subtree_lca_count, min_node_subtree_lca_count, args.gamma)
   else:
     branch_color = '#D3D3D3'
 

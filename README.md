@@ -10,7 +10,7 @@ This notebook will track the progress of my work in the lab.
 
 ## 2026
 
-[Mar](#3302026) &nbsp; [Apr](#4172026) &nbsp; 
+[Mar](#3302026) &nbsp; [Apr](#4172026) &nbsp; [May](#512026) &nbsp;
 
 ## 1/30/2025
 
@@ -4048,7 +4048,7 @@ mkdir from_bianca from_zihao
   -i data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.idx \
   --meta --filter-and-assign \
   --discard 0.6 --dust 5 -t 16 \
-  --output results/from_zihao/
+  --output results/from_zihao/KapK.cpDNA
 ```
 
 Now I'm going to write a script that generates a Taxonium/Nextclade json file for viewing the results.
@@ -4216,6 +4216,13 @@ twilight -t dipper_results/aluyex.polyA_trimmed.dipper.guide.nwk -i aluyex.polyA
 trimal -in aluyex.polyA_trimmed.auto.aln -out aluyex.polyA_trimmed.auto.trimmed.aln -automated1
 trimal -in aluyex.polyA_trimmed.retree.aln -out aluyex.polyA_trimmed.retree.trimmed.aln -automated1
 trimal -in aluyex.polyA_trimmed.twilight.aln -out aluyex.polyA_trimmed.twilight.trimmed.aln -automated1
+
+# Run dipper
+for file in *aln; do
+  prefix=$(basename $file .aln)
+  seqkit seq -uv -w 0 $file > tmptmptmp.fa && mv tmptmptmp.fa $file
+  dipper_cpu -i m -I $file -O dipper_results/${prefix}.nwk -d 4 --threads 32
+done
 ```
 
 ## 4/30/2026
@@ -4225,4 +4232,245 @@ trimal -in aluyex.polyA_trimmed.twilight.aln -out aluyex.polyA_trimmed.twilight.
 Continuing from [4/29/2026](#4292026), gonna finish writing the script that generates a Taxonium/Nextclade json file for
 viewing the results.
 
-!!!!!! Rebuild PanMANs with a given consensus!!!!
+Run `gen_taxonium.py` or `plot_results.py` to generate the Taxonium/Nextclade json file for viewing the results.
+
+```bash
+cd /scratch1/alan/lab_notebook/panmama/salicaceae/results
+
+# Zihao's data
+python3 plot_results.py -t salicaceae_concatenated.panman.nwk \
+  -l from_zihao/KapK.cpDNA.mgsr.assignedReadsLCANode.out \
+  -n from_zihao/KapK.cpDNA.mgsr.assignedReads.out \
+  -m ../data/salicaceae/meta.tsv \
+  --color-node-labels genus \
+  -g 0.5 \
+  -o from_zihao/KapK.cpDNA
+
+python3 plot_results.py -t salicaceae_concatenated.panman.nwk \
+  -l from_zihao/KapK.cpDNA.mgsr.assignedReadsLCANode.out \
+  -n from_zihao/KapK.cpDNA.mgsr.assignedReads.out \
+  -m ../data/salicaceae/meta.tsv \
+  --color-by lca_subtree_count \
+  --size-by lca_count \
+  --color-node-labels genus \
+  -g 0.7 \
+  -o from_zihao/KapK.cpDNA.lca_subtree
+
+python3 gen_taxonium.py -t salicaceae_concatenated.panman.nwk \
+  -l from_zihao/KapK.cpDNA.mgsr.assignedReadsLCANode.out \
+  -n from_zihao/KapK.cpDNA.mgsr.assignedReads.out \
+  -e template.merged.jsonl \
+  -g 0.7 \
+  > from_zihao/KapK.cpDNA.jsonl
+
+# Bianca's data.. Not gonna do gen_taxonium for now.
+for file in from_bianca/ERR10493*assignedReadsLCANode.out; do
+  prefix=$(basename $file .assignedReadsLCANode.out)
+  num_reads=$(awk '{sum += $2} END {print sum}' $file)
+  python3 plot_results.py -t salicaceae_concatenated.panman.nwk \
+  -l $file \
+  -n from_bianca/${prefix}.assignedReads.out \
+  -m ../data/salicaceae/meta.tsv \
+  --color-node-labels genus \
+  -g 0.7 \
+  --color-by lca_subtree_count \
+  --size-by lca_count \
+  -o from_bianca/${prefix}.${num_reads}r.lca_subtree
+done
+
+for file in from_bianca/ERR10493*assignedReadsLCANode.out; do
+  prefix=$(basename $file .assignedReadsLCANode.out)
+  num_reads=$(awk '{sum += $2} END {print sum}' $file)
+  python3 plot_results.py -t salicaceae_concatenated.panman.nwk \
+  -l $file \
+  -n from_bianca/${prefix}.assignedReads.out \
+  -m ../data/salicaceae/meta.tsv \
+  --color-node-labels genus \
+  -g 0.7 \
+  -o from_bianca/${prefix}.${num_reads}r
+done
+```
+
+### AluYeX tree
+
+Make a metadata file for this the AluYeX tree. Code written by Claude with my supervision.
+
+```bash
+python3 write_metadata.py \
+  --fasta aluyex.polyA_trimmed.renamed.fa \
+  --assemblies ../../ucsc_primate_assemblies.selected.tsv \
+  --nhmm aluyex.tsv \
+  --out metadata.tsv
+```
+
+The tree looks okish. I'm gonna try to download all the annotations for Primate Alus from Dfam.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam
+mkdir -p $wdir && cd $wdir
+
+# Get the primate alus using famdb.py with accession id
+# Then get the accession ids
+grep 'name=' primate_alu.ad.curated.acc.fa | cut -f 1 -d ' ' | sed -e 's/^>//g' -e 's/#SINE\/Alu//g' | cut -f 1 -d '.' > primate_alu.ad.curated.acc.txt
+for acc in $(cat primate_alu.ad.curated.acc.txt); do
+  bash download_annotations.sh $acc annotations
+  sleep 5
+done
+
+# Download the assemblies
+wget https://www.dfam.org/releases/ref-genomes/hg38/dfamseq
+```
+
+## 5/1/2026
+
+### Alu tree
+
+I will process the non-redundant human Alu copies from dfam for now.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/hg38_annotations
+cd $wdir && mkdir nr_fasta
+
+# Get the fasta files
+for file in nr/*; do prefix=$(basename $file .tsv); bedtools getfasta -fi ../ref_genomes/hg38.fa -bed <(awk 'BEGIN{OFS="\t"} !/^#/ {
+  if ($10 < $11) { start = $10 - 1; end = $11 }
+  else           { start = $11 - 1; end = $10 }
+  print $1, start, end, $3"|"$2, $4, $9
+}' $file) -s -name > nr_fasta/${prefix}.fa; done
+
+# Get sequences > 2/3 of the length of the consensus sequence
+seqkit fx2tab -n -l ../primate_alu.ad.curated.acc.fa  | grep 'name=' | awk '{print $1"\t"$2"\t"$NF}' | sed 's/name=//g'| \
+  sort -k3,3 -gr > ../consensus_len.tsv
+
+for file in nr_fasta/*hg38_nrph-true.fa; do
+  acc=$(basename $file | cut -f 1 -d '_')
+  len=$(grep $acc ../consensus_len.tsv | cut -f 3)
+  min_len=$((len * 2 / 3))
+  seqkit seq -uvg -w 0 -m $min_len $file > ${file%.fa}.${min_len}bp.fa
+done
+
+
+# remove reads with ambiguous bases and remove substring duplicates
+cd nr_fasta
+for file in *; do
+  sga preprocess --pe-mode 0 $file > ${file%.fa}.preprocessed.fa 
+  sga rmdup -t 4 ${file%.fa}.preprocessed.fa 
+done
+
+# remove poly-a tails
+for file in *.rmdup.fa; do 
+  acc=$(echo $file | cut -f 1 -d '_')
+  consensus=../hard_modified_consensus/${acc}.fasta
+  split_dir=$(basename $file .fa)_split
+  merged_trimmed_file=${file%.fa}.trimmed.fa
+  seqkit split -i --by-id-prefix '' -O $split_dir $file
+  shopt -s extglob
+  export consensus
+  printf '%s\n' "$split_dir"/!(*trimmed.fa) | parallel -j 32 'f={}; p=${f%.fa}; cat "$consensus" "$f" | mafft --auto --thread 1 - 2>/dev/null | python3 ../../../scripts/trim_polya.py - -o "${p}.trimmed.fa" && rm "$f"'
+  find "$split_dir" -maxdepth 1 -name '*.trimmed.fa' -print0 | xargs -0 cat > "$merged_trimmed_file"
+  rm -r $split_dir
+done
+
+cat nr_fasta_atrimmed/DF00* > cleaned.merged.fa
+```
+
+!! NOTE: Consensus sequences for trimming poly-a tails were hard-modified to substitute non-A in the middle of the
+poly-A tails for ease of code writing:
+
+- `DF003893998.2#SINE/Alu name=ASR @Simiiformes`
+- `DF000000073.4#SINE/Alu name=BC200 @Primates`
+
+After moving things around the clearing up intermediate files, I now have the the final set of non-redundant human Alu 
+copies with at least 2/3 of the consensus sequence length, no ambiguous bases, no substring duplicate, and poly-A
+tails removed.
+
+# 5/3/2026
+
+We have quite a lot of sequences.
+
+```console
+$ seqkit stats cleaned.merged.name_clean.fa
+file                          format  type   num_seqs      sum_len  min_len  avg_len  max_len
+cleaned.merged.name_clean.fa  FASTA   DNA   1,013,046  268,789,363       34    265.3      484
+```
+
+Try to use dipper and twilight to buil a tree
+
+```bash
+# build a guide tree first using dipper
+dipper_cpu -i r -I cleaned.merged.name_clean.fa -O cleaned.merged.name_clean.guide.nwk --threads 32 > dipper.log 2> dipper.err
+# Then use twilight to align the sequences
+```
+
+While that's running, I'm gonna also try and build an aluyx tree, which has 126,235 sequences.
+
+```bash
+# build a guide tree first using dipper
+dipper_cpu -i r -I cleaned.aluyx.name_clean.fa -O cleaned.aluyx.name_clean.guide.nwk --threads 32 > dipper.aluy.log 2> dipper.aluy.err
+# Then use twilight to align the sequences
+twilight -t cleaned.aluyx.name_clean.guide.nwk -i cleaned.aluyx.name_clean.fa -o cleaned.aluyx.name_clean.twilight.aln -v -w --check -r 0.999  --cpu-only -C 32
+```
+
+Maybe worth trying mafft (auto mode) to align the aluyx sequences as well. Gonna do it on phoenix.
+
+```bash
+input_fa=/private/groups/corbettlab/alan/lab_notebook/tes/alu_famdb/human_aluyx/cleaned.aluyx.name_clean.fa
+sbatch -J aluyx_human_dbfam run_mafft_retree.sh $input_fa ${$input_fa%.fa}.aln 2 0
+```
+
+Trim the alignments
+```bash
+trimal -in cleaned.aluyx.name_clean.twilight.aln -out cleaned.aluyx.name_clean.twilight.trimmed.aln -automated1
+trimal -in cleaned.aluyx.name_clean.mafftauto.aln -out cleaned.aluyx.name_clean.mafftauto.trimmed.aln -automated1
+```
+
+Then build a tree using dipper
+
+```bash
+# after alignment, run dipper 
+sbatch -J dipper_mafft_aluyx_human run_dipper.sh \
+  /private/groups/corbettlab/alan/lab_notebook/tes/alu_famdb/human_aluyx/cleaned.aluyx.name_clean.mafftauto.trimmed.aln \
+  /private/groups/corbettlab/alan/lab_notebook/tes/alu_famdb/human_aluyx/cleaned.aluyx.name_clean.mafftauto.nwk
+
+sbatch -J dipper_twilight_aluyx_human run_dipper.sh \
+  /private/groups/corbettlab/alan/lab_notebook/tes/alu_famdb/human_aluyx/cleaned.aluyx.name_clean.twilight.trimmed.aln \
+  /private/groups/corbettlab/alan/lab_notebook/tes/alu_famdb/human_aluyx/cleaned.aluyx.name_clean.twilight.nwk
+```
+
+The tree (from twilight.gappyout_trimmed.nwk) looks like this:
+
+![](tes/alu_dfam/hg38_annotations/taxonium.twilight.gappyout_trimmed.5_4_2026.png)
+
+It has some super long and weird branches. They might be misannotated or super divergent sequences. I'm gonna
+investigate and toss out some bad quality sequences.
+
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/hg38_annotations
+cd $wdir 
+python3 plot_score_vs_distance.py cleaned.aluyx.name_clean.twilight.gappyout_trimmed.jsonl aluyx.meta.tsv 
+python filter_alu.py aluyx.meta.tsv   -o aluyx.meta.filtered.tsv   --hist score_density_by_family.png   --scatter bitscore_vs_alnlen.png   --summary aluyx.meta.summary.tsv   --quantile 0.05
+```
+
+In figures below, `x_coords` is the x-coordinate of the sequence in the Taxonium tree, which reflects its divergence
+from the root. So it seems bit score is inversely correlated to divergence from the root, which is not surprising...
+
+`Alignment length` is the length of the hmm alignment, which should, in large, have a positive, linearly correlation with
+the bit score. I might be able to throw out sequences with low bit scores relative to their hmm alignment length.
+
+![](tes/alu_dfam/hg38_annotations/dotplots.png)
+
+And here is the density of bitscore / alignment length:
+
+![](tes/alu_dfam/hg38_annotations/score_density_by_family.png)
+
+And bitscore vs alignment length scatter plot (arbitrarily cut off 0.05 bottom percentile... to be modified):
+
+![](tes/alu_dfam/hg38_annotations/bitscore_vs_alnlen.png)
+
+
+```bash
+
+```
+
+# 5/4/2026
