@@ -10,16 +10,26 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def load_annotations(path: Path) -> pd.DataFrame:
+def load_annotations(path: Path, min_seq_length_ratio: float = 0, min_alignment_length_ratio: float = 0) -> pd.DataFrame:
   df = pd.read_csv(path, sep="\t")
   df["aligned_hmm_len"] = df["hmm_end"] - df["hmm_start"] + 1
+  df["sequence_len"] = abs(df["aln_end"] - df["aln_start"]) + 1
   df["score_density"] = df["bitscore"] / df["aligned_hmm_len"]
+  # Drop rows where sequence_len < min_seq_length or aligned_hmm_len < min_alignment_length
+  # Drop rows where sequence_len < min_seq_length_ratio * hmm_len
+  df = df[df["sequence_len"] >= min_seq_length_ratio * df["hmm_len"]]
+  df = df[df["aligned_hmm_len"] >= min_alignment_length_ratio * df["hmm_len"]]
   return df
 
 
 def compute_thresholds(df: pd.DataFrame, quantile: float, min_family_size: int,
-                       global_fallback_quantile: float) -> dict:
+                       global_fallback_quantile: float,
+                       hard_cutoff: float = None) -> dict:
   thresholds = {}
+  if hard_cutoff is not None:
+    for family in df["model_name"].unique():
+      thresholds[family] = hard_cutoff
+    return thresholds
   global_cutoff = df["score_density"].quantile(global_fallback_quantile)
   for family, sub in df.groupby("model_name"):
     if len(sub) >= min_family_size:
@@ -32,6 +42,23 @@ def compute_thresholds(df: pd.DataFrame, quantile: float, min_family_size: int,
 def apply_filter(df: pd.DataFrame, thresholds: dict) -> pd.DataFrame:
   cutoffs = df["model_name"].map(thresholds)
   return df[df["score_density"] >= cutoffs].copy()
+
+
+def plot_pooled_distribution(df: pd.DataFrame, out_path: Path,
+                             reference_cutoffs=(0.7, 0.8, 0.9)) -> None:
+  fig, ax = plt.subplots(figsize=(8, 4))
+  ax.hist(df["score_density"], bins=100, color="steelblue",
+          edgecolor="white", alpha=0.85)
+  for c in reference_cutoffs:
+    ax.axvline(c, color="crimson", linestyle="--", linewidth=1.0, alpha=0.7)
+    ax.text(c, ax.get_ylim()[1] * 0.95, f"{c}", color="crimson",
+            ha="center", fontsize=8)
+  ax.set_xlabel("bitscore / aligned HMM length")
+  ax.set_ylabel("count")
+  ax.set_title("Pooled score-density distribution (all families)")
+  fig.tight_layout()
+  fig.savefig(out_path, dpi=150)
+  plt.close(fig)
 
 
 def plot_family_distributions(df: pd.DataFrame, thresholds: dict, out_path: Path,
@@ -59,7 +86,7 @@ def plot_family_distributions(df: pd.DataFrame, thresholds: dict, out_path: Path
     ax.set_visible(False)
 
   fig.tight_layout()
-  fig.savefig(out_path, dpi=600)
+  fig.savefig(out_path, dpi=150)
   plt.close(fig)
 
 
@@ -103,7 +130,7 @@ def plot_scatter(df: pd.DataFrame, kept_mask: pd.Series, thresholds: dict,
     ax.set_visible(False)
 
   fig.tight_layout()
-  fig.savefig(out_path, dpi=600)
+  fig.savefig(out_path, dpi=150)
   plt.close(fig)
 
 
@@ -123,13 +150,22 @@ def main():
                  help="families with fewer hits use the global fallback cutoff")
   p.add_argument("--global-quantile", type=float, default=0.05,
                  help="fallback quantile computed across all families")
+  p.add_argument("--hard-cutoff", type=float, default=None,
+                 help="if set, apply this absolute score-density cutoff to all "
+                      "families (overrides --quantile and --min-family-size)")
+  p.add_argument("--global-hist", type=Path, default=Path("score_density_pooled.png"),
+                 help="pooled histogram across all families, for picking a cutoff")
+  p.add_argument("--min-seq-length-ratio", type=float, default=0,
+                 help="minimum sequence length ratio to consider")
+  p.add_argument("--min-alignment-length-ratio", type=float, default=0,
+                 help="minimum alignment length ratio to consider")
   p.add_argument("--summary", type=Path, default=None,
                  help="optional per-family summary table (.tsv)")
   args = p.parse_args()
 
-  df = load_annotations(args.input)
+  df = load_annotations(args.input, args.min_seq_length_ratio, args.min_alignment_length_ratio)
   thresholds = compute_thresholds(df, args.quantile, args.min_family_size,
-                                  args.global_quantile)
+                                  args.global_quantile, args.hard_cutoff)
 
   filtered = apply_filter(df, thresholds)
   kept_mask = df.index.isin(filtered.index)
@@ -139,6 +175,7 @@ def main():
 
   plot_family_distributions(df, thresholds, args.hist)
   plot_scatter(df, pd.Series(kept_mask, index=df.index), thresholds, args.scatter)
+  plot_pooled_distribution(df, args.global_hist)
 
   if args.summary is not None:
     rows = []
