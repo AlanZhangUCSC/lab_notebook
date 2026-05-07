@@ -164,7 +164,8 @@ def main():
       pos = m["residue_pos"]
       if args.start <= pos <= args.end:
         idx = pos - args.start
-        relevant_mut[m["mutation_id"]] = (idx, m["new_residue"])
+        relevant_mut[m["mutation_id"]] = (idx, m["previous_residue"],
+                                          m["new_residue"])
     print(f"  {len(relevant_mut)} window-relevant mutation IDs in header",
           file=sys.stderr)
 
@@ -208,7 +209,7 @@ def main():
 
   print("Verifying node_1 (root) reconstructs to reference...", file=sys.stderr)
   root_window = list(ref_window)
-  for idx, new_aa in root["muts"]:
+  for idx, prev_aa, new_aa in root["muts"]:
     root_window[idx] = new_aa
   if root_window != ref_window:
     diffs = [(args.start + i, ref_window[i], root_window[i])
@@ -235,6 +236,9 @@ def main():
   print("Reconstructing leaf sequences...", file=sys.stderr)
   leaf_seqs = []
 
+  inconsistencies = 0
+  inconsistency_examples = []
+
   for k, leaf_id in enumerate(leaf_ids):
     if k > 0 and k % 5000 == 0:
       print(f"    {k}/{len(leaf_ids)}", file=sys.stderr)
@@ -252,11 +256,28 @@ def main():
 
     seq = list(ref_window)
     for nid in path:
-      for idx, new_aa in nodes[nid]["muts"]:
+      for idx, prev_aa, new_aa in nodes[nid]["muts"]:
+        if seq[idx] != prev_aa:
+          inconsistencies += 1
+          if len(inconsistency_examples) < 5:
+            inconsistency_examples.append(
+              (nodes[leaf_id]["name"], nid, args.start + idx,
+               seq[idx], prev_aa, new_aa))
         seq[idx] = new_aa
     leaf_seqs.append((nodes[leaf_id]["name"], seq))
 
   print(f"  Reconstructed {len(leaf_seqs)} leaf sequences", file=sys.stderr)
+  if inconsistencies > 0:
+    print(f"  WARNING: {inconsistencies} mutations had previous_residue "
+          f"that did not match the current sequence. First few:",
+          file=sys.stderr)
+    for leaf_name, nid, pos, found, expected, new in inconsistency_examples:
+      print(f"    leaf={leaf_name} node_id={nid} {args.gene}:{pos} "
+            f"current={found} expected_prev={expected} new={new}",
+            file=sys.stderr)
+  else:
+    print("  OK: all mutations had consistent previous_residue.",
+          file=sys.stderr)
 
   fa_path = f"{args.output_prefix}.fa"
   with open(fa_path, "w") as fh:
