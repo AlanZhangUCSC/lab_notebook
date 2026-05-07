@@ -54,4 +54,13 @@ The arguments are:
 -o: Output prefix
 ```
 
+Regarding the concern about indels causing a frameshift, I don’t think it’s a major issue. The CCD is highly conserved, so any
+indels occurring upstream are likely to be in-frame. Even if an out-of-frame indel does occur, it would likely be non-viable
+and quickly purged by natural selection.
+
+However, if you want to be extra diligent, I would recommed getting all the RSV samples, translate the G proteins, and align them with
+a traditional MSA tool then build a sequence logo out of that.
+
+
+
 
