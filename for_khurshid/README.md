@@ -54,6 +54,23 @@ The arguments are:
 -o: Output prefix
 ```
 
+You might need to install some packages with conda. Chatgpt or claude are excellent tools to ask for help. You can run the
+same script for rsvb once you have the jsonl file.
+
+Actually, you might be able to get the rsv b from the UCSC genome browser: 
+
+RSV_A: https://hgdownload.gi.ucsc.edu/hubs/GCF/002/815/475/GCF_002815475.1/UShER_RSV-A/
+
+RSV_B: https://hgdownload.gi.ucsc.edu/hubs/GCF/000/855/545/GCF_000855545.1/UShER_RSV-B/
+
+These are trees hosted by UCSC, which more or less have the same set of samples and may have a different reference from the 
+tree that Russ sent you. It shouldn't affect the sequence logo.
+
+You can prolly get the reference information here, which you will need to get the reference G protein sequence: 
+
+https://genome.ucsc.edu/cgi-bin/hgPhyloPlace?hgsid=3967298784_oqFvwAaz7cYVaMWHKwaLHljjYq7c&hgpp_org=rsv
+
+
 Regarding the concern about indels causing a frameshift, I don’t think it’s a major issue. The CCD is highly conserved, so any
 indels occurring upstream are likely to be in-frame. Even if an out-of-frame indel does occur, it would likely be non-viable
 and quickly purged by natural selection.
