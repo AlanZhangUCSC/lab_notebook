@@ -4444,12 +4444,21 @@ The tree (from twilight.gappyout_trimmed.nwk) looks like this:
 It has some super long and weird branches. They might be misannotated or super divergent sequences. I'm gonna
 investigate and toss out some bad quality sequences.
 
-
+Make a meta data file first...
 ```bash
 wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/hg38_annotations
 cd $wdir 
+(for file in nr/DF00*AluY*; do prefix=$(basename $file .tsv); paste <(seqkit seq -n nr_fasta/${prefix}.fa | sed -e 's/(.)//g' -e 's/:/_/g') <(tail -n+2 $file) ; done) > aluyx.meta.tsv
+((echo "sample  target  model_acc       model_name      bitscore        evalue  hmm_start       hmm_end hmm_len strand  aln_start aln_end   env_start  env_end    target_length" | awk -v OFS='\t' '{$1=$1; print}') && cat aluyx.meta.tsv) > tmp
+mv tmp aluyx.meta.tsv
+```
+
+```bash
 python3 plot_score_vs_distance.py cleaned.aluyx.name_clean.twilight.gappyout_trimmed.jsonl aluyx.meta.tsv 
-python filter_alu.py aluyx.meta.tsv   -o aluyx.meta.filtered.tsv   --hist score_density_by_family.png   --scatter bitscore_vs_alnlen.png   --summary aluyx.meta.summary.tsv   --quantile 0.05
+python filter_alu.py aluyx.meta.tsv \
+  -o aluyx.meta.filtered.tsv \
+  --hard-cutoff 1.0 \
+  --summary aluyx.meta.summary.tsv
 ```
 
 In figures below, `x_coords` is the x-coordinate of the sequence in the Taxonium tree, which reflects its divergence
@@ -4460,17 +4469,169 @@ the bit score. I might be able to throw out sequences with low bit scores relati
 
 ![](tes/alu_dfam/hg38_annotations/dotplots.png)
 
+# 5/4/2026 and5/5/2026
+
 And here is the density of bitscore / alignment length:
 
 ![](tes/alu_dfam/hg38_annotations/score_density_by_family.png)
 
-And bitscore vs alignment length scatter plot (arbitrarily cut off 0.05 bottom percentile... to be modified):
+And bitscore vs alignment length scatter plot (cut off bitscore / alignment length < 1.0):
 
 ![](tes/alu_dfam/hg38_annotations/bitscore_vs_alnlen.png)
 
 
-```bash
+Before I rerun the alignment and rebuild the tree all over again with the filtered set, I will first just prune the 
+discarded sequences from the original tree and see what it looks like.
 
+```bash
+# discarded sequences...
+comm -13 <(cut -f1 aluyx.meta.filtered.tsv | tail -n+2 | sort) <(cut -f1 aluyx.meta.tsv | tail -n+2 | sort) \
+  > discarded.low_0nout8.txt 
+
+# that are in the final tree
+comm -12 <(seqkit seq -n  cleaned.aluyx.name_clean.fa | sort) discarded.low_0nout8.txt \
+  > discarded.low_0nout8.intree.txt
+
+# prune the tree
+nw_prune -f cleaned.aluyx.name_clean.twilight.gappyout_trimmed.nwk discarded.low_bitscore.intree.txt \
+  > cleaned.aluyx.name_clean.twilight.gappyout_trimmed.pruned.nwk &
+nw_prune -f cleaned.aluyx.name_clean.mafftauto.gappyout_trimmed.nwk discarded.low_bitscore.intree.txt \
+  > cleaned.aluyx.name_clean.mafftauto.gappyout_trimmed.pruned.nwk &
 ```
 
-# 5/4/2026
+Now the tree (from mafftauto.gappyout_trimmed.pruned.nwk) looks like this:
+
+![](tes/alu_dfam/hg38_annotations/taxonium.mafftauto.gappyout_trimmed.5_5_2026.png)
+
+It still has a few long branches relative to the rest of the tree but I think it's good enough for now.
+
+Now I will actually add all the consensus sequences as well as an outgroup to the filtered fasta, then realign and
+rebuild the tree.
+
+```bash
+# clean up the old aln and tree files
+mv cleaned.aluyx.name_clean.*aln cleaned.aluyx.name_clean.*jsonl cleaned.aluyx.name_clean.*nwk archive.aluyx.unfiltered_bitscore/
+tar -czvf archive.aluyx.unfiltered_bitscore.tar.gz archive.aluyx.unfiltered_bitscore/
+
+# grab the bitscore filtered fasta
+seqkit grep -v -n -f discarded.low_0nout8.txt cleaned.aluyx.name_clean.fa > cleaned.aluyx.name_clean.bitscore_filtered.fa
+
+# add the consensus sequences and an outgroup (an AluSc8 consensus). Poly-A trimmed of course.
+cat hard_modified_consensus/* | seqkit grep -n -r -p '.*name=AluY.*' | seqkit seq -w 0 | \
+  awk '/^>/{print; next} {sub(/A+$/, ""); print}' | sed -e 's/#SINE\/Alu//g' -e 's/ name=/_/g' | \
+  seqkit seq -uvi -w 60 >> cleaned.aluyx.name_clean.bitscore_filtered.fa
+
+seqkit seq -w 0 hard_modified_consensus/DF000000038.fasta | \
+  awk '/^>/{print; next} {sub(/A+$/, ""); print}' | sed -e 's/#SINE\/Alu//g' -e 's/ name=/_/g' | \
+  seqkit seq -uvi -w 60 >> cleaned.aluyx.name_clean.bitscore_filtered.fa
+
+
+# On phoenix, run mafft --auto, mafft --retree 2, and dipper-twilight to get aln files
+# On phoenix, run dipper on all aligned files
+```
+
+eghhhhhh... It seems like some of the annotations from dfam are also not correted..... which might explain super low
+bitscore / alignment length ratios for some of the AluY subfamilies. See the score density of all families at
+`tes/alu_dfam/hg38_annotations/all.score_density_by_family.png`...
+
+I guess I will run my own `nhmmscan` on the annotated regions again.
+
+```bash
+# sync merged.nhmmerscan.tblout from phoenix to silverbullet
+awk -v OFS='\t' '$1=$1 {print $0}' merged.nhmmerscan.tblout  > tmp && mv tmp merged.nhmmerscan.tblout
+python3 filter_hmmscan.py merged.nhmmerscan.tblout merged.nhmmerscan
+# sort by max-hit family name
+sort -k16,16 merged.hmmerscan.hmm_max.tblout   > tmp && mv tmp merged.hmmerscan.hmm_max.tblout
+```
+
+# 5/6/2026
+
+Reassign the copies to their max hit families and preprocess the fasta files for alignment and stuff.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/hg38_annotations/hmm_max_hits
+mkdir -p $wdir && cd $wdir
+mv ../merged.nhmmerscan.* .
+
+# rename the copies to match their max hit families
+python3 scripts/rename_copy.py merged.nhmmerscan.hmm_max.tblout > merged.nhmmerscan.hmm_max.name_corrected.tblout
+
+# split the file into multiple files by max hit family name
+awk -F'\t' '{
+  key = $1
+  sub(/#.*/, "", key)
+  print > (key ".tblout")
+}' merged.nhmmerscan.hmm_max.name_corrected.tblout
+
+# convert the hmmtblout files to bed files
+for file in split_hmmout/*tblout; do
+  python3 scripts/hmmtblout2bed.py $file > beds/$(basename $file .tblout).bed &
+done
+wait
+
+# get fasta
+for file in beds/*bed; do
+  prefix=$(basename $file .bed)
+  bedtools getfasta -fi ../../ref_genomes/hg38.fa -bed $file -s -name > fastas/${prefix}.fa &
+done
+wait
+
+# hmmalign copies to trim off poly-a tails
+for file in fastas/*fa; do
+  prefix=$(basename $file .fa)
+  hmmalign --outformat afa -o ${prefix}.hmmaln \
+    ../../../primate_alus/hmm/split/${prefix}.hmm \
+    $file &
+done
+wait
+
+# get the position of the last non-poly-a base in consensus (1-based inclusive), i.e. lengh of the consensus sequence minus the length of the poly-a tail
+(for file in hmmalign/*; do 
+  prefix=$(basename "$file" .hmmaln)
+  acc=$(awk -v p="$prefix" '$2 == p' ../../accession_to_name.tsv | cut -f1 -d '.')
+  pos=$(sed 's/A*$//g' ../hard_modified_consensus/${acc}.fasta | grep '\S' | seqkit stats | tail -n1 | awk '{print $5}')
+  echo -e "${prefix}\t${acc}\t${pos}"
+done) > nonpolya_last_base.tsv
+```
+
+# 5/8/2026
+
+Now I will build the human AluYx panMAT map some simulated human reads onto it.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/hg38_annotations
+cd $wdir
+mkdir -p panmat
+
+# All the alignment and nwk files are copied from phoenix to alignment/ dir
+# Build panman
+for nwk in alignment/*nwk; do
+  prefix=$(basename $nwk .nwk)
+  alignment=alignment/${prefix}.upper.aln
+  /scratch1/alan/panmap/build/bin/panmanUtils -M $alignment -N $nwk -o ${prefix} --threads 16 &
+done
+wait
+
+# Then build index
+for panman in panmat/*panman; do
+  /scratch1/alan/panmap/build/bin/panmap $panman --index-mgsr ${panman%.panman}.idx &
+done
+wait
+```
+
+Simulate some hg38 reads using wgsim
+
+```bash
+# Simulate 100M paired reads of length 150bp -> ~10x coverage of the human genome. Random seed is 69, nice.
+wgsim -1 150 -2 150 -N 100000000 -e 0.005 -r 0.001 -R 0.01 -X 0.1 -S 69 hg38.core.fa simulated.10x_R1.fastq simulated.10x_R2.fastq
+```
+
+Run panmap
+
+```bash
+/scratch1/alan/panmap/build/bin/panmap ../panmat/cleaned.aluyx.name_clean.bitscore_filtered.auto.panman \
+  simulated.10x_R1.fastq simulated.10x_R2.fastq \
+  -i ../panmat/cleaned.aluyx.name_clean.bitscore_filtered.auto.idx \
+  --meta --filter-and-assign --discard 0.9  -t 16 \
+  --output simulated.10x
+```

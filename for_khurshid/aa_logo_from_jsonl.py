@@ -254,6 +254,7 @@ def main():
     path.append(root_id)
     path.reverse()
 
+
     seq = list(ref_window)
     for nid in path:
       for idx, prev_aa, new_aa in nodes[nid]["muts"]:
