@@ -4569,7 +4569,7 @@ for file in split_hmmout/*tblout; do
 done
 wait
 
-# get fasta
+# get fasta, this also flips the strand if the alignment is reversed
 for file in beds/*bed; do
   prefix=$(basename $file .bed)
   bedtools getfasta -fi ../../ref_genomes/hg38.fa -bed $file -s -name > fastas/${prefix}.fa &
@@ -4585,11 +4585,41 @@ for file in fastas/*fa; do
 done
 wait
 
+# rerun nhmmscan (so reversed alignments are now in positive alignment coordinates)
+for file in fastas/*fa; do
+  prefix=$(basename $file .fa)
+  nhmmscan --cpu 2 --noali --tblout hmmscan_out/${prefix}.tblout ../../../primate_alus/hmm/split/${prefix}.hmm $file &
+done
+wait
+
+# remove header lines and reformat spaces to tabs
+for file in hmmscan_out/*; do
+  sed -i '/^#/d' $file
+  awk -v OFS='\t' '$1=$1 {print $0}' $file > tmp && mv tmp $file
+done
+
+# Keep only the max hit for each sequence
+for file in hmmscan_out/*; do awk -F'\t' '
+  $3 != prev {
+    if (NR > 1) print best
+    prev = $3
+    best = $0
+    max = $14
+    next
+  }
+  $14 + 0 > max + 0 {
+    best = $0
+    max = $14
+  }
+  END { if (NR > 0) print best }
+' $file > tmp && mv tmp $file
+done
+
 # get the position of the last non-poly-a base in consensus (1-based inclusive), i.e. lengh of the consensus sequence minus the length of the poly-a tail
 (for file in hmmalign/*; do 
   prefix=$(basename "$file" .hmmaln)
   acc=$(awk -v p="$prefix" '$2 == p' ../../accession_to_name.tsv | cut -f1 -d '.')
-  pos=$(sed 's/A*$//g' ../hard_modified_consensus/${acc}.fasta | grep '\S' | seqkit stats | tail -n1 | awk '{print $5}')
+  pos=$(seqkit seq -w 0 ../hard_modified_consensus/${acc}.fasta | sed 's/A*$//g' | seqkit stats | tail -n1 | awk '{print $5}')
   echo -e "${prefix}\t${acc}\t${pos}"
 done) > nonpolya_last_base.tsv
 ```
@@ -4635,3 +4665,154 @@ Run panmap
   --meta --filter-and-assign --discard 0.9  -t 16 \
   --output simulated.10x
 ```
+
+## 5/10/2026
+
+Run script to get the family distribution of the results
+
+```bash
+python3 ../get_family_distribution.py simulated.10x.assignedReadsLCANode.out  simulated.10x
+```
+
+Also it with the hs1 assembly
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/hg38_annotations/simulation/hs1; mkdir -p $wdir && cd $wdir
+
+# Simulate 100M paired reads of length 150bp -> ~10x coverage of the human genome. Random seed is 69, nice.
+wgsim -1 150 -2 150 -N 100000000 -e 0.005 -r 0.001 -R 0.01 -X 0.1 -S 69 hs1.fa simulated.10x_R1.fastq simulated.10x_R2.fastq
+
+/scratch1/alan/panmap/build/bin/panmap ../panmat/cleaned.aluyx.name_clean.bitscore_filtered.auto.panman \
+  simulated.10x_R1.fastq simulated.10x_R2.fastq \
+  -i ../panmat/cleaned.aluyx.name_clean.bitscore_filtered.auto.idx \
+  --meta --filter-and-assign --discard 0.9  -t 16 \
+  --taxonomic-metadata ../hg38/meta.tsv --taxonomic-rank family \
+  --output simulated.10x
+
+python3 ../../get_family_distribution.py simulated.10x.mgsr.assignedReadsLCANode.out  simulated.10x
+```
+
+The family hit distribution for both the hg38 and hs1 assemblies are pretty similar to the true distributions in the hg38 genome.
+
+```console
+(echo -e "family\tperc(%)\thg38(%)\ths1(%)" && grep -v AluSc hg38/family_proportions.tsv | tail -n+2 |  while read family count perc; do hg38_perc=$(grep "$family\s" hg38/simulated.10x.family_distribution.tsv | cut -f 3); hs1_perc=$(grep "$family\s" hs1/simulated.10x.family_distribution.tsv | cut -f 3); echo -e "${family}\t${perc}\t${hg38_perc}\t${hs1_perc}"; done) | column -t
+
+family   perc(%)    hg38(%)   hs1(%)
+AluY     61.9227    63.27427  63.11049
+AluYk3   14.2511    14.51000  14.41058
+AluYm1   5.76422    5.65363   5.62706
+AluYh3   3.49367    3.28037   3.31778
+AluYf1   3.40791    3.45101   3.40657
+AluYa5   2.65938    1.45155   1.43539
+AluYc    1.87256    1.74491   1.72729
+AluYb8   1.81594    1.00798   0.98499
+AluYe5   0.980825   0.87819   0.86545
+AluYk4   0.939194   0.92281   0.92472
+AluYh7   0.888404   0.86860   0.88896
+AluYi6   0.534541   0.46039   0.45302
+AluYc3   0.397992   0.37334   0.37166
+AluYg6   0.385502   0.28896   0.41987
+AluYb9   0.203992   0.10433   0.11391
+AluYe6   0.142378   0.13717   0.13962
+AluYd8   0.137382   0.09318   0.09121
+AluYk11  0.080764   0.06568   0.06650
+AluYk12  0.0616138  0.02985   0.05585
+AluYa8   0.0407983  0.02718   0.02270
+AluYh9   0.0183176  0.01446   0.01587
+```
+
+## 5/11/2026
+
+### Estimating AluY proportions of pantro6 using the hg38 AluY panmat
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/hg38_annotations/simulation/panTro6; mkdir -p $wdir && cd $wdir
+
+# Simulate 100M paired reads of length 150bp -> ~10x coverage of the human genome. Random seed is 69, nice.
+wgsim -1 150 -2 150 -N 100000000 -e 0.005 -r 0.001 -R 0.01 -X 0.1 -S 69 panTro6.core.fa simulated.10x_R1.fastq simulated.10x_R2.fastq
+
+# Run panmap
+/scratch1/alan/panmap/build/bin/panmap ../../panmat/cleaned.aluyx.name_clean.bitscore_filtered.auto.panman \
+  simulated.10x_R1.fastq simulated.10x_R2.fastq \
+  -i ../../panmat/cleaned.aluyx.name_clean.bitscore_filtered.auto.idx \
+  --meta --filter-and-assign --discard 0.9  -t 16 \
+  --taxonomic-metadata ../hg38/meta.tsv --taxonomic-rank family \
+  --batch-size 100000 \
+  --output simulated.10x
+
+# Get the family distribution
+python3 ../../get_family_distribution.py simulated.10x.mgsr.assignedReadsLCANode.out  simulated.10x
+
+# Get the pantro AluY distributions from dfam annotations
+zcat ../../../annotations/*DApanTro2_nrph-true.tsv.gz | cut -f3 | grep AluY | uniq -c | awk '{print $2"\t"$1}' > panTro6.aluy.counts.tsv
+(echo -e "family\tcounts\tperc(%)" && awk 'BEGIN{FS=OFS="\t"} NR==FNR{sum+=$2; next} {printf "%s\t%d\t%.4f\n", $1, $2, ($2/sum)*100}' panTro6.aluy.counts.tsv panTro6.aluy.counts.tsv) > panTro6.aluy.proportions.tsv
+```
+
+Comparing the family proportions from the dfam annotations and the estimated proportions from the panmap results.
+
+```console
+(echo -e "family\tfamdb(%)\testimated(%)" && join -t $'\t' -a 1 -a 2 -e "0" -o '0,1.3,2.3'   <(tail -n +2 panTro6.aluy.proportions.tsv | sort -k1,1)   <(tail -n +2 simulated.10x.family_distribution.tsv | sort -k1,1)   | awk 'BEGIN{FS=OFS="\t"} {print}' | sort -k2,2 -k3,3 -gr) | column -t
+
+family   famdb(%)  estimated(%)
+AluY     61.7815   66.89192
+AluYk3   12.9284   14.26758
+AluYm1   6.1193    5.56688
+AluYh3   5.1540    3.36265
+AluYf1   3.6716    3.04981
+AluYc    3.6282    1.45518
+AluYh7   2.4261    0.79552
+AluYk4   1.2719    0.87418
+AluYe5   1.0675    0.79731
+AluYc3   0.8213    0.46659
+AluYh9   0.5666    0.01966
+AluYe6   0.5636    0.17341
+.        0         1.46770
+AluYi6   0         0.38435
+AluYa5   0         0.20022
+AluYg6   0         0.06972
+AluYb8   0         0.06614
+AluYk11  0         0.04112
+AluYk12  0         0.03754
+AluYb9   0         0.00536
+AluYd8   0         0.00358
+AluYa8   0         0.00358
+```
+
+Some of the proportions are quite off... AluYi6 and AluYa5 were estimated to be present for a non-trivial proportion of
+the reads but not in the dfam annotations. This might be due to incomplete representation of the AluYx copies or might 
+simply be due to incomplete annotations of the AluYx copies in the dfam annotations. The same goes for cases like AluYh9
+that has a very low estimated proportion but is present in the dfam annotations. Will investigate this further.
+
+
+### HMM max hits processing
+
+Pick up from the end of [5/6/2026](#562026)
+
+Use the hmm alignment to trim off poly-As and positions outside of the hmm alignment.
+
+```bash
+# trim off poly-As and positions outside of the hmm alignment
+for file in hmmalign/*; do 
+  prefix=$(basename $file .hmmaln)
+  python3 scripts/process_hmmalignment.py $file \
+    inenv_polya_trimmed/${prefix}.fa \
+    -p nonpolya_last_base.tsv \
+    -a hmmscan_out/${prefix}.tblout &
+done
+wait
+
+# only trim off poly-As
+for file in hmmalign/*; do 
+  prefix=$(basename $file .hmmaln)
+  python3 scripts/process_hmmalignment.py $file \
+    polya_trimmed/${prefix}.fa \
+    -p nonpolya_last_base.tsv \
+    -a hmmscan_out/${prefix}.tblout \
+    -k &
+done
+wait
+```
+
+### Salicaceae related 
+
+Gonna run some more samples Bianca and Zihao sent me.
