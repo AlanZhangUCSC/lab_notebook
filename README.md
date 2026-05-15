@@ -4813,6 +4813,285 @@ done
 wait
 ```
 
+## 5/12/2026 and 5/13/2026
+
+### Build a primate AluYx panMAT
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/primate_annotations/fastas; mkdir -p $wdir && cd $wdir
+
+# Get the fasta files for the primate AluYx copies
+for ref in ../dfam_references/*fa; do
+  assembly=$(basename "$ref" .fa)
+  mkdir -p "${assembly}"
+  
+  for annotation_file in $(find ../../ -name "*${assembly}*_nrph-true.tsv.gz"); do
+    model_name=$(basename "$annotation_file" | cut -f1 -d '_')
+    model_name=$(grep "^${model_name}" ../../accession_to_name.tsv | cut -f2)
+    bedtools getfasta -fi "$ref" -bed <(zcat "$annotation_file" | awk 'BEGIN{OFS="\t"} !/^#/ {
+      start = ($10 < $11) ? $10 - 1 : $11 - 1
+      end = ($10 < $11) ? $11 : $10
+      print $1, start, end, $3"|"$2, $4, $9
+    }') -s -name > "${assembly}/${model_name}.fa" &
+  done
+  wait
+done
+
+# Merge the fasta files for each assembly
+for dir in *; do
+  cat ${dir}/*.fa > ${dir}.fa
+done
+
+# Add assembly name to the fasta headers
+for dir in */; do
+  assembly="${dir%/}"
+  for file in "$dir"*.fa; do
+    [ -f "$file" ] || continue
+    sed -i "s/^>/>${assembly}|/" "$file"
+  done
+done
+
+for f in *.fa; do
+  assembly="${f%.fa}"
+  sed -i "s/^>/>${assembly}|/" "$f"
+done
+
+# Group fastas by family. This is the unfiltered fastas grabbed directly from fastas dir.
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/primate_annotations/fastas_by_family; mkdir -p $wdir && cd $wdir
+for family in $(l -1 ../fastas/*/* | awk -F'/' '{print $NF}' | sed 's/.fa//g' | sort -u); do
+  cat ../fastas/*/${family}.fa > ${family}.fa
+done
+
+# Run hmmalign on unfiltered, family grouped fastas on phoenix for poly-A trimming and maybe some other filtering. Used run_hmmalign_2026-05-12.sh on phoenix.
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/primate_annotations
+seqkit seq -w 0 ../../primate_alus/primate_alu.ad.curated.fa | sed 's/[Aa]*$//g' | seqkit fx2tab  -i -n -l | grep -v short | sed 's/#SINE\/Alu//g' > nonpolya_last_base.tsv
+
+find hmmalign_out_by_family -mindepth 2 -type f -name "*hmmaln"| \
+  parallel -j 8 'python3 ../../scripts/process_hmmalignment.py {} {.}.fa -p nonpolya_last_base.tsv -k'
+
+mkdir fastas_by_family_polya_trimmed
+for dir in hmmalign_out_by_family/*; do
+  family=$(basename $dir _hmmalign_out)
+  cat $dir/*fa > fastas_by_family_polya_trimmed/${family}.fa
+done
+
+# clean up intermediate files
+rm -r hmmalign_out_by_family/*_hmmalign_out
+
+# Make assembly-specific hmm profile for each assembly
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/primate_annotations/hmm_models; mkdir -p $wdir && cd $wdir
+for dir in ../fastas/*; do
+  [ -f "$dir" ] && continue
+  assembly=$(basename "$dir")
+  families=$(ls -1 $dir/*.fa | sed 's/\.fa//g' | awk -F '/' '{print $NF}')
+  for family in $families; do
+    cat ../../../primate_alus/hmm/split/${family}.hmm >> ${assembly}.hmm
+  done
+done
+
+# Run nhmmscan on phoenix to get the max hmm hits using assembly specific hmm profiles. Used run_nhmmerscan_2026-05-12.sh on phoenix.
+# Reformat and reassign the copies to their max hit families
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/primate_annotations/nhmmscan_out; cd $wdir
+for file in *tblout; do
+  awk -v OFS='\t' '$1=$1 {print $0}' $file > ${file%.tblout}.tmp && mv ${file%.tblout}.tmp $file
+  awk -v OFS='\t' '$16 == "7SL" {$16="7SLRNA"} 1' $file > ${file%.tblout}.tmp && mv ${file%.tblout}.tmp $file
+  python3 ../../../scripts/filter_hmmscan.py $file ${file%.tblout}
+  python3 ../../../scripts/rename_copy.py ${file%.tblout}.hmm_max.tblout > ${file%.tblout}.hmm_max.renamed.tblout
+done
+```
+
+
+Work on AluYx specific panMAT
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/primate_annotations/aluyx; mkdir -p $wdir && cd $wdir
+cat ../fastas_by_family/AluY*fa > aluyx.unfiltered.fa
+cat ../fastas_by_family_polya_trimmed/AluY*fa > aluyx.polya_trimmed.fa
+
+# Check out the length distribution
+seqkit fx2tab -n -l -i aluyx.unfiltered.fa  | cut -f2 | sort -g | uniq -c > len_stats.unfiltered.tsv &
+seqkit fx2tab -n -l -i aluyx.polya_trimmed.fa  | cut -f2 | sort -g | uniq -c > len_stats.polya_trimmed.tsv &
+
+python3 ../../../scripts/plot_len_distribution.py len_stats.unfiltered.tsv len_dist.unfiltered.png --bin-width 5 &
+python3 ../../../scripts/plot_len_distribution.py len_stats.polya_trimmed.tsv len_dist.polya_trimmed.png --bin-width 5 &
+
+# Length filter reads. Remove reads with ambiguous bases and remove substring duplicates
+sga preprocess --pe-mode 0 aluyx.polya_trimmed.fa -m 100 > aluyx.polya_trimmed.preprocessed.fa
+sga index -t 16 aluyx.polya_trimmed.preprocessed.fa
+sga rmdup -t 16 aluyx.polya_trimmed.preprocessed.fa
+
+# Rename headers to be tree friendly
+seqkit seq -i -w 0 aluyx.polya_trimmed.preprocessed.rmdup.fa | sed 's/(.)//g' | tr ':' '_' | sed 's/#SINE\/Alu//g' > aluyx.polya_trimmed.preprocessed.rmdup.renamed_headers.fa
+```
+
+I also ran the same commands on AluSx and AluJx copies.
+
+# 5/14/2026
+
+### AluYx PanMAT related
+
+After the job failed initially I tried different other options and better GPUs but nothing worked.
+
+I talked with Sumit and changed the sketch-seed setting to 100 from the default (1000). The default number of seeds is 
+too high for the relatively short Alu sequences, making most of the sequences look very similar to each other, resulting
+in the clusters bigger than the backbone.
+
+If that doesn't work I will try to increase the backbone size, which Sumit told me how to do.
+
+### Side project: make a better verterbate mito tree
+
+I learned that, similar to chloroplast genomes, mitochondrial genomes should also be built by splitting the genome into
+regions then aligning each region individually followed by concatenation and tree inference. I'm trying out this tool
+called `mitos` to annotate the mitochondrial genomes and extract the regions.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/vertebrate_new_panman; mkdir -p $wdir && cd $wdir
+ls v_mtdna.dedupped.split/*.fa | parallel -j 32 --bar '
+  name=$(basename {} .fa)
+  mkdir -p annotations/$name
+  runmitos \
+    -i {} \
+    -c 2 \
+    -o annotations/$name \
+    -r refseq89m \
+    -R . \
+    --noplots \
+    > logs/$name.stdout 2> logs/$name.stderr
+'
+```
+
+I will be aligning the 13 protein coding genes (PCGs) and the 2 rRNAs (12S and 16S) and using their alignments to build
+the tree. Gonna exclude the tRNAs.
+
+For future me the 13 PCGs are:
+
+```console
+nad1 — ND1, ~950 nt
+nad2 — ND2, ~1040 nt
+nad3 — ND3, ~345 nt
+nad4 — ND4, ~1380 nt
+nad4l — ND4L, ~295 nt
+nad5 — ND5, ~1810 nt
+nad6 — ND6, ~525 nt
+cox1 — COI, ~1540 nt
+cox2 — COII, ~680 nt
+cox3 — COIII, ~785 nt
+atp6 — ATP6, ~680 nt
+atp8 — ATP8, ~200 nt
+cob — CYTB, ~1140 nt
+```
+
+12 of the 13 are on the heavy strand. nad6 is the odd one out, on the light strand, and has weird base composition
+because of it — might need to give it special treatment (separate partition, or RY-coding, or just drop it) if I see
+weirdness in the tree later.
+And the 2 rRNAs:
+
+```console
+rrnS — 12S, ~950 nt
+rrnL — 16S, ~1550 nt
+```
+
+That gives me 15 partitions total, ~14kb of aligned sequence per taxon once everything's concatenated.
+
+**For alignment:**
+
+PCGs: use MACSE v2, codon-aware. Vertebrate mitochondrial genetic code = translation table 2:
+
+```
+AUA = Met (not Ile)
+UGA = Trp (not stop)
+AGA/AGG = stop (not Arg)
+MACSE handles this if I pass --gc_def 2 (or whatever the flag is — check docs).
+```
+
+
+rRNAs: MAFFT --auto is fine, or L-INS-i for better accuracy. Structure-aware would be better but probably overkill.
+Trim with trimAl -automated1 or -gappyout before concatenation.
+
 ### Salicaceae related 
 
 Gonna run some more samples Bianca and Zihao sent me.
+
+1. cpDNA of Populus genus, Populus_besthit_diff_1.fastq. *Already ran earlier*.
+2. FLB sediment Salix data, competitively mapped, Salix reads extracted
+3. FLB sediment data, not mapped, just straight up clean fqs
+4. FLB bone data, not mapped
+5. KapK competitively mapped Populus reads, deduplicated, potential NUPTs and MTPTs removed.
+
+
+First run the flb sediment salix reads
+
+```bash
+wdir=/scratch1/alan/lab_notebook/panmama/salicaceae/data/flb_sediment_salix
+cd $wdir
+
+# convert bam to fastqs
+for file in *bam; do
+  samtools fastq $file >> merged.primary.fq
+  samtools fastq $file -F 0 >> merged.all.fq
+done
+
+# Run panmap
+wdir=/scratch1/alan/lab_notebook/panmama/salicaceae/results/flb_sediment_salix; mkdir -p $wdir && cd $wdir
+
+/scratch1/alan/panmap/build/bin/panmap ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman \
+  ../../data/flb_sediment_salix/merged.all.fq \
+  -i ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.idx \
+  --meta --filter-and-assign \
+  --discard 0.5  -t 8 \
+  --output merged.all
+
+# Plot results (all and primary, plain and lca_subtree)
+python3 ../../plot_results.py -t ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman.nwk -l merged.all.mgsr.assignedReadsLCANode.out -n merged.all.mgsr.assignedReads.out -m ../../data/salicaceae/meta.tsv --color-node-labels genus -g 0.7 -o merged.all
+python3 ../../plot_results.py -t ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman.nwk -l merged.all.mgsr.assignedReadsLCANode.out -n merged.all.mgsr.assignedReads.out -m ../../data/salicaceae/meta.tsv --color-node-labels genus --color-by lca_subtree_count --size-by lca_count -g 0.7 -o merged.all.lca_subtree
+```
+
+FLB sediment unmapped reads
+
+```bash
+wdir=/scratch1/alan/lab_notebook/panmama/salicaceae/results/flb_sediment_unmapped; mkdir -p $wdir && cd $wdir
+
+data_path=/storage2/alan/flb_sediment_unmapped
+/scratch1/alan/panmap/build/bin/panmap ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman \
+  --batch-files-path ${data_path}/batch_files.tsv \
+  -i ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.idx \
+  --meta --filter-and-assign \
+  --discard 0.6  -t 16 --batch-size 100000
+```
+
+FLB bone data
+
+```bash
+wdir=/scratch1/alan/lab_notebook/panmama/salicaceae/results/flb_bone; mkdir -p $wdir && cd $wdir
+
+data_path=/storage2/alan/flb_bone
+/scratch1/alan/panmap/build/bin/panmap ../../data/v_mtdna/v_mtdna.new.panman \
+  --batch-files-path ${data_path}/batch_files.tsv \
+  -i ../../data/v_mtdna/v_mtdna.pmai \
+  --meta --filter-and-assign \
+  --taxonomic-metadata ../../data/v_mtdna/v_mtdna.meta.tsv \
+  --taxonomic-rank Family \
+  --discard 0.6  -t 16 
+
+```
+
+KapK competitively mapped Populus reads
+
+```bash
+wdir=/scratch1/alan/lab_notebook/panmama/salicaceae/results/kapk_populus_dedup_remap; mkdir -p $wdir && cd $wdir
+
+for idx_param in k11_s6_l1 k13_s7_l1 k15_s8_l1; do
+  outprefix=B.KapK.Populus.cpDNA.dedup.remap.${idx_param}
+  /scratch1/alan/panmap/build/bin/panmap ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman \
+    ../../data/kapk_populus_dedup_remap/B.KapK.Populus.cpDNA.dedup.remap.fastq.gz \
+    -i ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.${idx_param}.idx \
+    --meta --filter-and-assign \
+    --discard 0.5  -t 8 \
+    --output ${outprefix}
+
+  python3 ../../plot_results.py -t ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman.nwk -l ${outprefix}.mgsr.assignedReadsLCANode.out -n ${outprefix}.mgsr.assignedReads.out -m ../../data/salicaceae/meta.tsv --color-node-labels genus -g 0.7 -o ${outprefix} &
+  python3 ../../plot_results.py -t ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman.nwk -l ${outprefix}.mgsr.assignedReadsLCANode.out -n ${outprefix}.mgsr.assignedReads.out -m ../../data/salicaceae/meta.tsv --color-node-labels genus --color-by lca_subtree_count --size-by lca_count -g 0.7 -o ${outprefix}.lca_subtree &
+  wait
+done
+```
+

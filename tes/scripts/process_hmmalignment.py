@@ -11,7 +11,8 @@ args = parser.parse_args()
 
 records = list(Bio.SeqIO.parse(args.input, "fasta"))
 
-input_family = records[0].id.split('|')[0]
+input_family = records[0].id.split('|')[1]
+input_family = input_family.replace('#SINE/Alu', '').strip()
 
 non_polya_hmm_len = -1
 with open(args.polya_file, "r") as f:
@@ -59,13 +60,13 @@ if alignment_records:
     exit(1)
 
 out_fh = open(args.output, "w")
-for record, alignment_record in zip(records, alignment_records):
-  assert record.id == alignment_record[0]
-
+for i, record in enumerate(records):
   keep_seq = None
-  if args.keep_non_envelope:
+  if args.keep_non_envelope or not alignment_records:
     keep_seq = record.seq[:non_polya_global_terminal_pos+1].replace('-', '').replace('.', '').upper()
   else:
+    alignment_record = alignment_records[i]
+    assert record.id == alignment_record[0]
     envfrom, envto = alignment_record[5], alignment_record[6] # 1 based, inclusive
     envfrom_global, envto_global = -1, -1 # 0 based, inclusive
     if envfrom > envto: continue

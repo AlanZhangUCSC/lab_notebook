@@ -162,7 +162,7 @@ max_read_count = 0
 min_read_count = float('inf')
 with open(args.node_read_counts_file, 'r') as f:
   for line in f:
-    node_label, count, _ = line.strip().split('\t')
+    node_label, _, count, _ = line.strip().split('\t')
     for node_label_clean in node_label.split(','):
       node_label_clean = node_label_clean.replace('_', ' ')
       node_read_counts[node_label_clean] = int(count)
@@ -172,7 +172,7 @@ with open(args.node_read_counts_file, 'r') as f:
 node_read_counts_lca = {}
 with open(args.node_read_counts_lca_file, 'r') as f:
   for line in f:
-    node_label, count_lca, _ = line.strip().split()
+    node_label, _, count_lca, _ = line.strip().split()
     for node_label_clean in node_label.split(','):
       node_label_clean = node_label_clean.replace('_', ' ')
       count_lca = int(count_lca)
