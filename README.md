@@ -4384,7 +4384,7 @@ After moving things around the clearing up intermediate files, I now have the th
 copies with at least 2/3 of the consensus sequence length, no ambiguous bases, no substring duplicate, and poly-A
 tails removed.
 
-# 5/3/2026
+## 5/3/2026
 
 We have quite a lot of sequences.
 
@@ -4469,7 +4469,7 @@ the bit score. I might be able to throw out sequences with low bit scores relati
 
 ![](tes/alu_dfam/hg38_annotations/dotplots.png)
 
-# 5/4/2026 and5/5/2026
+## 5/4/2026 and 5/5/2026
 
 And here is the density of bitscore / alignment length:
 
@@ -4544,7 +4544,7 @@ python3 filter_hmmscan.py merged.nhmmerscan.tblout merged.nhmmerscan
 sort -k16,16 merged.hmmerscan.hmm_max.tblout   > tmp && mv tmp merged.hmmerscan.hmm_max.tblout
 ```
 
-# 5/6/2026
+## 5/6/2026
 
 Reassign the copies to their max hit families and preprocess the fasta files for alignment and stuff.
 
@@ -4588,7 +4588,7 @@ wait
 # rerun nhmmscan (so reversed alignments are now in positive alignment coordinates)
 for file in fastas/*fa; do
   prefix=$(basename $file .fa)
-  nhmmscan --cpu 2 --noali --tblout hmmscan_out/${prefix}.tblout ../../../primate_alus/hmm/split/${prefix}.hmm $file &
+  q --cpu 2 --noali --tblout hmmscan_out/${prefix}.tblout ../../../primate_alus/hmm/split/${prefix}.hmm $file &
 done
 wait
 
@@ -4624,7 +4624,7 @@ done
 done) > nonpolya_last_base.tsv
 ```
 
-# 5/8/2026
+## 5/8/2026
 
 Now I will build the human AluYx panMAT map some simulated human reads onto it.
 
@@ -4926,7 +4926,7 @@ seqkit seq -i -w 0 aluyx.polya_trimmed.preprocessed.rmdup.fa | sed 's/(.)//g' | 
 
 I also ran the same commands on AluSx and AluJx copies.
 
-# 5/14/2026
+## 5/14/2026
 
 ### AluYx PanMAT related
 
@@ -4937,6 +4937,17 @@ too high for the relatively short Alu sequences, making most of the sequences lo
 in the clusters bigger than the backbone.
 
 If that doesn't work I will try to increase the backbone size, which Sumit told me how to do.
+
+Yay the tree built after ~8 hours! Wait.. TWILIGHT failed.. It seemed like the final tree built is missing exactly one
+sample?
+
+I'm going to rerun dipper with both the docker pulled version and the latest github version.
+
+I also found that DIPPER fails when the job gets assigned to phoenix-02 but works on phoenix-05. I forced the job to be
+assigned to phoenix-05 for now. Will report this issue to Sumit and maybe the cluster admins.
+
+It seemed like the error arose actually because TWILIGHT wasn't parsing the floats correctly when reading in the tree.
+I removed the branch length information from the nwk and it worked.
 
 ### Side project: make a better verterbate mito tree
 
@@ -5004,11 +5015,10 @@ AGA/AGG = stop (not Arg)
 MACSE handles this if I pass --gc_def 2 (or whatever the flag is — check docs).
 ```
 
-
 rRNAs: MAFFT --auto is fine, or L-INS-i for better accuracy. Structure-aware would be better but probably overkill.
 Trim with trimAl -automated1 or -gappyout before concatenation.
 
-### Salicaceae related 
+### aeDNA related 
 
 Gonna run some more samples Bianca and Zihao sent me.
 
@@ -5072,7 +5082,6 @@ data_path=/storage2/alan/flb_bone
   --taxonomic-metadata ../../data/v_mtdna/v_mtdna.meta.tsv \
   --taxonomic-rank Family \
   --discard 0.6  -t 16 
-
 ```
 
 KapK competitively mapped Populus reads
@@ -5095,3 +5104,169 @@ for idx_param in k11_s6_l1 k13_s7_l1 k15_s8_l1; do
 done
 ```
 
+## 5/15/2026
+
+### aeDNA related
+
+Let's first take a look at the FLB bones.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/panmama/salicaceae/results/flb_bone; mkdir -p $wdir && cd $wdir
+
+mkdir -p analysis/taxon_reads
+for file in *fastq; do
+  prefix=$(basename $file .mgsr.assignedReads.fastq)
+  python3 ../../../sediment_arctic_4mil/collect_reads.py $prefix all analysis/taxon_reads/${prefix} &
+done
+wait
+
+mkdir -p analysis/aligned_family
+for file in *fastq; do
+  prefix=$(basename $file .mgsr.assignedReads.fastq)
+  python3 ../../../sediment_arctic_4mil/align_family.py \
+    ../../../sediment_arctic_4mil/data/fastas \
+    analysis/taxon_reads/${prefix} \
+    ../../../sediment_arctic_4mil/data/v_mtdna.meta.tsv \
+    --out_dir analysis/aligned_family/${prefix} &
+done
+wait
+
+mkdir -p analysis/damage
+for sample in analysis/aligned_family/*; do
+  outdir=analysis/damage/$(basename ${sample})
+  mkdir -p $outdir
+  for bam in ${sample}/*.merged.bam; do
+    prefix=$(basename $bam .merged.bam)
+    out_prefix=${outdir}/${prefix}
+    python3 ../../../sediment_arctic_4mil/plot_damage.py compute --bam ${bam} --out-subs ${out_prefix}.subs.tsv --out-plot ${out_prefix}.plot.png --tax-name ${prefix} && \
+    python3 ../../../sediment_arctic_4mil/plot_damage.py score --in-subs ${out_prefix}.subs.tsv --out-tsv ${out_prefix}.score.tsv --tax-name ${prefix} &
+  done
+  wait
+done
+```
+
+The FLB bone reads don't seem to be qc'd. Gonna qc it now.
+
+### Side project: make a better verterbate mito tree
+
+Just got all the annotations. Get some stats
+
+```bash
+wdir=/scratch1/alan/lab_notebook/vertebrate_new_panman; mkdir -p $wdir && cd $wdir
+
+bash summarize_mitos.sh annotations/ regions.tsv
+```
+
+## 5/18/2026
+
+Maybe the nhmmscan and dfam annotation discrepancies was because dfam annotations were scanned across the entire genome,
+which might have genomic contexts that could make it different from nhmmscan on only the sequence itself. Gonna try
+to give it ~200 bp of flanks
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/primate_annotations_with_flanks/fastas; mkdir -p $wdir && cd $wdir
+
+for ref in ../../primate_annotations/dfam_references/*fa; do
+  assembly=$(basename "$ref" .fa)
+  mkdir -p "${assembly}"
+
+  genome_file="../../primate_annotations/dfam_references/${assembly}.genomes.txt"
+  for annotation_file in $(find ../../annotations -maxdepth 1 -name "*${assembly}*_nrph-true.tsv.gz"); do
+    model_name=$(basename "$annotation_file" | cut -f1 -d '_')
+    model_name=$(grep "^${model_name}" ../../accession_to_name.tsv | cut -f2)
+    bedtools getfasta -fi "$ref" -bed <(zcat "$annotation_file" | awk 'BEGIN{OFS="\t"} !/^#/ {
+      start = ($10 < $11) ? $10 - 1 : $11 - 1
+      end = ($10 < $11) ? $11 : $10
+      print $1, start, end, $3"|"$2, $4, $9
+    }' | bedtools slop -i - -g "$genome_file" -b 200 -s) -s -name > "${assembly}/${model_name}.fa" &
+  done
+  wait
+done
+```
+
+Then follow steps from [5/12/2026 and 5/13/2026](#5122026-and-5132026)
+
+## 5/19/2026
+
+I'm going to run dfamscan on whole genomes to see if I get the same results as dfam annotations. This is done on
+Phoenix.
+
+Meanwhile I will work on my lab meeting.
+
+### Content for lab meeting
+
+Make a stacked bar plot of the Alu copies from dfam annotations.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/primate_annotations; mkdir -p $wdir && cd $wdir
+
+python3 ../../scripts/plot_alu_counts.py fastas/all.stats.tsv -o alu_totals.png
+```
+
+Make a bar plot comparing the counts of UCSC annotated AluYe5 copies between assemblies.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_ucsc/by_family/aluye5; mkdir -p $wdir && cd $wdir
+python3 plot_counts.py counts_by_assembly.tsv -o aluye5_counts.png -t "AluYe5 counts by assembly"
+```
+
+Make two pie charts comparing the nhmmscan results between hs1-incluster and hs1-outcluster aluye5 copies.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_ucsc/by_family/aluye5/hs1_cluster; mkdir -p $wdir && cd $wdir
+python3 plot_alu_pies.py hs1_incluster.hmm_tophit_counts.tsv hs1_outcluster.hmm_tophit_counts.tsv   --label1 "In-cluster" --label2 "Out-of-cluster" -o alu_family_pies.png
+```
+
+Simualted run results
+
+```
+family   hg38_famdb(%)  hg38_famdb_filtered(%)  estm_hg38(%)  estm_hs1(%)
+AluY     55.3862        61.9227                 63.27427      63.11049
+AluYk3   13.2246        14.2511                 14.51000      14.41058
+AluYm1   5.5811         5.76422                 5.65363       5.62706
+AluYh3   4.7205         3.49367                 3.28037       3.31778
+AluYf1   3.6093         3.40791                 3.45101       3.40657
+AluYa5   3.4467         2.65938                 1.45155       1.43539
+AluYc    3.1104         1.87256                 1.74491       1.72729
+AluYb8   2.0589         1.81594                 1.00798       0.98499
+AluYe5   1.1516         0.980825                0.87819       0.86545
+AluYk4   1.0569         0.939194                0.92281       0.92472
+AluYh7   2.0974         0.888404                0.86860       0.88896
+AluYi6   0.7652         0.534541                0.46039       0.45302
+AluYc3   0.6479         0.397992                0.37334       0.37166
+AluYg6   0.6843         0.385502                0.28896       0.41987
+AluYb9   0.3857         0.203992                0.10433       0.11391
+AluYe6   0.4372         0.142378                0.13717       0.13962
+AluYd8   0.3438         0.137382                0.09318       0.09121
+AluYk11  0.2443         0.080764                0.06568       0.06650
+AluYk12  0.2128         0.0616138               0.02985       0.05585
+AluYa8   0.4269         0.0407983               0.02718       0.02270
+AluYh9   0.4084         0.0183176               0.01446       0.01587
+Ambigu   .              .                       1.36214       1.55051
+```
+
+```
+family   pantro(%) estimated(%)
+AluY     61.7815   66.89192
+AluYk3   12.9284   14.26758
+AluYm1   6.1193    5.56688
+AluYh3   5.1540    3.36265
+AluYf1   3.6716    3.04981
+AluYc    3.6282    1.45518
+AluYh7   2.4261    0.79552
+AluYk4   1.2719    0.87418
+AluYe5   1.0675    0.79731
+AluYc3   0.8213    0.46659
+AluYh9   0.5666    0.01966
+AluYe6   0.5636    0.17341
+AluYi6   0         0.38435
+AluYa5   0         0.20022
+AluYg6   0         0.06972
+AluYb8   0         0.06614
+AluYk11  0         0.04112
+AluYk12  0         0.03754
+AluYb9   0         0.00536
+AluYd8   0         0.00358
+AluYa8   0         0.00358
+Ambigu   0         1.46770
+```
