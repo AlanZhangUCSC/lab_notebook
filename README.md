@@ -5067,6 +5067,13 @@ data_path=/storage2/alan/flb_sediment_unmapped
   -i ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.idx \
   --meta --filter-and-assign \
   --discard 0.6  -t 16 --batch-size 100000
+
+python3 ../gather_assignedReads.py -i *clean.mgsr.assignedReadsLCANode.out -o assignedReadsLCANode.merged.out
+python3 ../gather_assignedReads.py -i *clean.mgsr.assignedReads.out -o assignedReads.merged.out
+
+python3 ../../plot_results.py -t ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman.nwk -l assignedReadsLCANode.merged.out -n assignedReads.merged.out -m ../../data/salicaceae/meta.tsv --color-node-labels genus -g 0.7 -o merged.all
+python3 ../../plot_results.py -t ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman.nwk -l assignedReadsLCANode.merged.out -n assignedReads.merged.out -m ../../data/salicaceae/meta.tsv --color-node-labels genus --color-by lca_subtree_count --size-by lca_count -g 0.7 -o merged.all.lca_subtree
+
 ```
 
 FLB bone data
@@ -5098,9 +5105,6 @@ for idx_param in k11_s6_l1 k13_s7_l1 k15_s8_l1; do
     --discard 0.5  -t 8 \
     --output ${outprefix}
 
-  python3 ../../plot_results.py -t ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman.nwk -l ${outprefix}.mgsr.assignedReadsLCANode.out -n ${outprefix}.mgsr.assignedReads.out -m ../../data/salicaceae/meta.tsv --color-node-labels genus -g 0.7 -o ${outprefix} &
-  python3 ../../plot_results.py -t ../../data/salicaceae/salicaceae_panMAT/panmans/salicaceae_concatenated.panman.nwk -l ${outprefix}.mgsr.assignedReadsLCANode.out -n ${outprefix}.mgsr.assignedReads.out -m ../../data/salicaceae/meta.tsv --color-node-labels genus --color-by lca_subtree_count --size-by lca_count -g 0.7 -o ${outprefix}.lca_subtree &
-  wait
 done
 ```
 
@@ -5146,6 +5150,8 @@ done
 ```
 
 The FLB bone reads don't seem to be qc'd. Gonna qc it now.
+
+Now it's qc'd. Looking at the results, it doesn't seem like Panmap identified any significant hits.
 
 ### Side project: make a better verterbate mito tree
 
@@ -5220,53 +5226,58 @@ python3 plot_alu_pies.py hs1_incluster.hmm_tophit_counts.tsv hs1_outcluster.hmm_
 Simualted run results
 
 ```
-family   hg38_famdb(%)  hg38_famdb_filtered(%)  estm_hg38(%)  estm_hs1(%)
-AluY     55.3862        61.9227                 63.27427      63.11049
-AluYk3   13.2246        14.2511                 14.51000      14.41058
-AluYm1   5.5811         5.76422                 5.65363       5.62706
-AluYh3   4.7205         3.49367                 3.28037       3.31778
-AluYf1   3.6093         3.40791                 3.45101       3.40657
-AluYa5   3.4467         2.65938                 1.45155       1.43539
-AluYc    3.1104         1.87256                 1.74491       1.72729
-AluYb8   2.0589         1.81594                 1.00798       0.98499
-AluYe5   1.1516         0.980825                0.87819       0.86545
-AluYk4   1.0569         0.939194                0.92281       0.92472
-AluYh7   2.0974         0.888404                0.86860       0.88896
-AluYi6   0.7652         0.534541                0.46039       0.45302
-AluYc3   0.6479         0.397992                0.37334       0.37166
-AluYg6   0.6843         0.385502                0.28896       0.41987
-AluYb9   0.3857         0.203992                0.10433       0.11391
-AluYe6   0.4372         0.142378                0.13717       0.13962
-AluYd8   0.3438         0.137382                0.09318       0.09121
-AluYk11  0.2443         0.080764                0.06568       0.06650
-AluYk12  0.2128         0.0616138               0.02985       0.05585
-AluYa8   0.4269         0.0407983               0.02718       0.02270
-AluYh9   0.4084         0.0183176               0.01446       0.01587
-Ambigu   .              .                       1.36214       1.55051
+family   hg38_famdb(%)  hg38_famdb_filtered(%)  estm_hg38(%)  estm_hs1(%) | family   pantro(%)  estimated(%)
+AluY     55.3862        61.9227                 63.27427      63.11049    |  AluY     61.7815    66.89192
+AluYk3   13.2246        14.2511                 14.51000      14.41058    |  AluYk3   12.9284    14.26758
+AluYm1   5.5811         5.76422                 5.65363       5.62706     |  AluYm1   6.1193     5.56688
+AluYh3   4.7205         3.49367                 3.28037       3.31778     |  AluYh3   5.1540     3.36265
+AluYf1   3.6093         3.40791                 3.45101       3.40657     |  AluYf1   3.6716     3.04981
+AluYa5   3.4467         2.65938                 1.45155       1.43539     |  AluYc    3.6282     1.45518
+AluYc    3.1104         1.87256                 1.74491       1.72729     |  AluYh7   2.4261     0.79552
+AluYb8   2.0589         1.81594                 1.00798       0.98499     |  AluYk4   1.2719     0.87418
+AluYe5   1.1516         0.980825                0.87819       0.86545     |  AluYe5   1.0675     0.79731
+AluYk4   1.0569         0.939194                0.92281       0.92472     |  AluYc3   0.8213     0.46659
+AluYh7   2.0974         0.888404                0.86860       0.88896     |  AluYh9   0.5666     0.01966
+AluYi6   0.7652         0.534541                0.46039       0.45302     |  AluYe6   0.5636     0.17341
+AluYc3   0.6479         0.397992                0.37334       0.37166     |  AluYi6   0          0.38435
+AluYg6   0.6843         0.385502                0.28896       0.41987     |  AluYa5   0          0.20022
+AluYb9   0.3857         0.203992                0.10433       0.11391     |  AluYg6   0          0.06972
+AluYe6   0.4372         0.142378                0.13717       0.13962     |  AluYb8   0          0.06614
+AluYd8   0.3438         0.137382                0.09318       0.09121     |  AluYk11  0          0.04112
+AluYk11  0.2443         0.080764                0.06568       0.06650     |  AluYk12  0          0.03754
+AluYk12  0.2128         0.0616138               0.02985       0.05585     |  AluYb9   0          0.00536
+AluYa8   0.4269         0.0407983               0.02718       0.02270     |  AluYd8   0          0.00358
+AluYh9   0.4084         0.0183176               0.01446       0.01587     |  AluYa8   0          0.00358
+Ambigu   .              .                       1.36214       1.55051     |  Ambigu   0          1.46770
 ```
 
+## 5/20/2026
+
+I gave lab meeting and sent over the Salicaeceae and the bone DNA placements to Zihao and Bianca.
+
+## 5/21/2026
+
+Yay, Zihao will include the KapK Salicaceae placements in his paper, and Bianca will include me on the ellesmere paper
+author list (not my results but she appreciated my work)!
+
+## 5/22/2026
+
+I think I will just throw away all the copies that are assigned different models by hmmerscan across the whole genome
+and local sequence only. i.e. only keep the ones that could be confidently assigned to one family regardless of its
+flanking region. I think we'd lose about ~10% of the copies but that should be fine.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/primate_annotations/nhmmscan_out; cd $wdir
+for file in $(find . -maxdepth 1 -name "*tblout" ! -name "*hmm_max*tblout"); do
+  file=$(basename $file)
+  awk '{
+    f1 = $1; sub(/#.*/, "", f1)
+    f3 = $3; sub(/\|.*/, "", f3)
+    if (f1 == f3) print
+  }' $file > ${file%.tblout}_matched.tblout &
+done
+wait &
+
+
 ```
-family   pantro(%) estimated(%)
-AluY     61.7815   66.89192
-AluYk3   12.9284   14.26758
-AluYm1   6.1193    5.56688
-AluYh3   5.1540    3.36265
-AluYf1   3.6716    3.04981
-AluYc    3.6282    1.45518
-AluYh7   2.4261    0.79552
-AluYk4   1.2719    0.87418
-AluYe5   1.0675    0.79731
-AluYc3   0.8213    0.46659
-AluYh9   0.5666    0.01966
-AluYe6   0.5636    0.17341
-AluYi6   0         0.38435
-AluYa5   0         0.20022
-AluYg6   0         0.06972
-AluYb8   0         0.06614
-AluYk11  0         0.04112
-AluYk12  0         0.03754
-AluYb9   0         0.00536
-AluYd8   0         0.00358
-AluYa8   0         0.00358
-Ambigu   0         1.46770
-```
+
