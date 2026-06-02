@@ -12,6 +12,13 @@ This notebook will track the progress of my work in the lab.
 
 [Mar](#3302026) &nbsp; [Apr](#4172026) &nbsp; [May](#512026) &nbsp;
 
+
+## Projects
+
+[Population Populus PanMAT](#population-populus-panmat)
+
+[Land plant-wide chloroplast PanMAN](#land-plant-wide-chloroplast-panman)
+
 ## 1/30/2025
 
 ### panMANIA
@@ -5262,9 +5269,10 @@ author list (not my results but she appreciated my work)!
 
 ## 5/22/2026
 
-I think I will just throw away all the copies that are assigned different models by hmmerscan across the whole genome
+I think I will just throw away all the copies that are assigned different families by hmmerscan across the whole genome
 and local sequence only. i.e. only keep the ones that could be confidently assigned to one family regardless of its
-flanking region. I think we'd lose about ~10% of the copies but that should be fine.
+flanking region (keep when the top hit and the annotation are in the same family but not necessarily the same subfamily).
+I think we'd lose about ~10% of the copies but that should be fine.
 
 ```bash
 wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/primate_annotations/nhmmscan_out; cd $wdir
@@ -5274,10 +5282,436 @@ for file in $(find . -maxdepth 1 -name "*tblout" ! -name "*hmm_max*tblout"); do
     f1 = $1; sub(/#.*/, "", f1)
     f3 = $3; sub(/\|.*/, "", f3)
     if (f1 == f3) print
-  }' $file > ${file%.tblout}_matched.tblout &
+  }' $file > ${file%.tblout}.matched.tblout &
 done
 wait &
 
+# then reprocess the AluY copies first
+wdir=/scratch1/alan/lab_notebook/tes/alu_dfam/primate_annotations/aluyx; cd $wdir
+cat ../fastas_by_family_polya_trimmed/AluY*fa > aluyx.polya_trimmed.fa
+sed -i 's|#SINE/Alu||g' aluyx.polya_trimmed.fa
 
+for file in ../nhmmscan_out/*.hmm_max.tblout; do
+  assembly=$(basename $file .hmm_max.tblout)
+  awk '$1 ~ /AluY/ && $3 ~ /AluY/' $file | cut -f3 | sed "s/^/${assembly}\|/g" > ${assembly}.aluy.matched.ids.txt &
+done
+wait &
+
+cat *.aluy.matched.ids.txt | sed 's|#SINE/Alu||g' > aluyx.matched.ids.txt && rm *.aluy.matched.ids.txt
+seqkit grep -f aluyx.matched.ids.txt aluyx.polya_trimmed.fa  | seqkit seq -w 0 > aluyx.polya_trimmed.matched.fa
+
+# len filter
+seqkit seq -m 250 -M 350 -w 0 aluyx.polya_trimmed.matched.fa  > aluyx.polya_trimmed.matched.len_filtered.fa
+
+# # remove exact substring duplicates
+# sga preprocess --pe-mode 0 aluyx.polya_trimmed.matched.fa > aluyx.polya_trimmed.matched.preprocessed.fa
+# sga index -t 16 aluyx.polya_trimmed.matched.preprocessed.fa
+# sga rmdup -t 16 aluyx.polya_trimmed.matched.preprocessed.fa
+
+
+# cluster the matched AluY copies to subsample the sequences
+cd-hit-est -i aluyx.polya_trimmed.matched.fa -o aluy_rep.fasta -c 0.95 -n 10 -M 16000 -T 16 -d 0
+cd-hit-est -i aluyx.polya_trimmed.matched.len_filtered.fa -o aluy_rep.len_filtered.fasta -c 0.95 -n 10 -M 16000 -T 16 -d 0
+cd-hit-est -i aluyx.polya_trimmed.matched.len_filtered.fa -o aluy_rep.len_filtered.99.fasta -c 0.99 -n 10 -M 128000 -T 32 -d 0
 ```
+
+While the clustering is running, I'm gonna run DIPPER on the unclsutered, len filtered AluY copies 
+
+```bash
+for m in 3 1; do
+  for s in 100 200; do
+    for k in 15 13; do
+      sbatch -J dipper_m${m}_s${s}_k${k} run_dipper_gpu_from_fa.sh \
+        /private/groups/corbettlab/alan/lab_notebook/tes/alu_famdb/primate_alus/aluyx/aluyx.polya_trimmed.matched.len_filtered.renamed.fa \
+        /private/groups/corbettlab/alan/lab_notebook/tes/alu_famdb/primate_alus/aluyx/aluyx.polya_trimmed.matched.len_filtered.renamed.m${m}_s${s}_k${k}.nwk \
+        ${m} ${s} ${k}
+    done
+  done
+done
+```
+
+## 5/26/2026
+
+All of the dipper runs failed but the `m=3, s=100, k=15` setting. Going to trim it off now.
+
+I also don't think I will use the clustering results for anything. Setting the sequence identity threshold low (0.95)
+loses signals and setting it high (0.99) create too many clusters and still risks losing some signals. THe tree itself
+automatically clusters the sequences and compresses similar sequences using "evolutionary compression" anyway...
+
+Today I will start working on the Github tutorial for peqg.
+
+## 5/27/2026
+
+I just finished the Github tutorial for peqg.
+
+## 5/28/2026
+
+Finished trimming the first aluyx alignment. Gonna run dipper on it now.
+
+```bash
+for m in 3 1; do
+  sbatch -J dipper_m${m} run_dipper_gpu_from_aln.sh \
+    /private/groups/corbettlab/alan/lab_notebook/tes/alu_famdb/primate_alus/aluyx/aluyx.polya_trimmed.matched.len_filtered.renamed.trimmed.aln \
+    /private/groups/corbettlab/alan/lab_notebook/tes/alu_famdb/primate_alus/aluyx/aluyx.polya_trimmed.matched.len_filtered.renamed.trimmed.m${m}.nwk \
+    ${m}
+done
+```
+
+And build a PanMAN from the first alignment to see how it looks
+
+```bash
+
+/scratch1/alan/panmap/build/bin/panmanUtils \
+  -M aluyx.polya_trimmed.matched.len_filtered.renamed.aln \
+  -N aluyx.polya_trimmed.matched.len_filtered.renamed.m3_s100_k15.nwk \
+  --threads 32 \
+  -o aluyx
+```
+
+## Land plant-wide chloroplast PanMAN
+
+### 5/29/2026
+
+I just had my committee meeting. It went well. The committee members were happy with my progress. They warn me that
+modern sequencing capability allows us to fairly easily and cheaply assemble genomes to discover TEs and curate
+reference pangenome pangenomes could also be used by mapping reads directly to the pangenome to identify TE copies.
+
+**They recommended me to fully consider building a land plant-wide chloroplast PanMAN**
+
+Searching all the complete land plant chloroplast genomes in RefSeq. In NCBI (nucleotide), search use this query:
+
+```text
+Embryophyta[ORGN] AND chloroplast[filter] AND ("complete genome"[Title] OR "complete plastid genome"[Title] OR "complete chloroplast genome"[Title]) AND refseq[filter] 
+```
+
+There are 12449 results as of 11:36 AM on 5/29/2026.
+
+Get the list of accession numbers and metadata.
+
+```bash
+# Get accession numbers, taxids, names, etc.
+esearch -db nuccore -query 'Embryophyta[ORGN] AND chloroplast[filter] AND ("complete genome"[Title] OR "complete plastid genome"[Title] OR "complete chloroplast genome"[Title]) AND refseq[filter]' \
+  | esummary \
+  | xtract -pattern DocumentSummary \
+      -element AccessionVersion,TaxId,Organism,Slen,CreateDate,UpdateDate,Title \
+  > plastome_metadata.tsv
+
+# Get taxonomy
+cut -f2 plastome_metadata.tsv | sort -u > taxids.txt
+
+epost -db taxonomy -input taxids.txt \
+  | efetch -format xml \
+  | xtract -pattern Taxon -tab "\t" \
+      -KING "(-)" -PHYL "(-)" -CLSS "(-)" -ORDR "(-)" -FMLY "(-)" -GNUS "(-)" \
+      -block "*/Taxon" \
+        -if Rank -equals "kingdom" -KING ScientificName \
+        -if Rank -equals "phylum"  -PHYL ScientificName \
+        -if Rank -equals "class"   -CLSS ScientificName \
+        -if Rank -equals "order"   -ORDR ScientificName \
+        -if Rank -equals "family"  -FMLY ScientificName \
+        -if Rank -equals "genus"   -GNUS ScientificName \
+      -group Taxon \
+        -element TaxId,ScientificName,"&KING","&PHYL","&CLSS","&ORDR","&FMLY","&GNUS" \
+  > taxonomy.tsv
+
+python3 merge_meta.py plastome_metadata.tsv taxonomy.tsv > plastome_metadata_with_taxonomy.tsv
+```
+
+Special cases are handled as follows:
+
+| Scientific name type | Example | Parsing strategy |
+| --------------------- | ------- | ----------- |
+| Genus hybrid cultivar | Aeonium hybrid cultivar | set species name to `sp.` and hybrid type to `hybrid_cultivar` |
+| \[Genus\] species ... | \[Polygonum\] chinense var. procumbens | set genus to `Genus` without the square brackets |
+| aff. samples | Euphorbia aff. neococcinea Luke s.n. | set species name to `sp.`|
+| cf. samples | Urera cf. cordifolia Ur15 | set species name to `sp.`|
+| subsp. samples | Brassica rapa subsp. rapa | set subspecies name |
+| var. samples | Capsicum baccatum var. pendulum | set varietas name |
+| sp. samples | Tetrastigma sp. Wen 12461 | set species name to `sp.` and uniden_id to identifiers after `sp.`, e.g. `Wen 12461` |
+
+We have chloroplast genomes from a total of 16 classes.
+
+```console
+$ cut -f 6 plastome_metadata_with_taxonomy.tsv | sort -u
+Andreaeopsida
+Anthocerotopsida
+Bryopsida
+Cycadopsida
+Gnetopsida
+Haplomitriopsida
+Jungermanniopsida
+Leiosporocerotopsida
+Lycopodiopsida
+Magnoliopsida
+Marchantiopsida
+Pinopsida
+Polypodiopsida
+Polytrichopsida
+Sphagnopsida
+Tetraphidopsida
+```
+
+Seems like we are missing:
+
+- Ginkgoopsida (Ginkos): the missing gymnosperm class
+  - **Found many complete Ginko chloroplast genomes but none are in refseq, using `AB684440.1`**
+- Andreaeobryopsida and Oedipodiopsida (two moss classes): very tiny classes with very few species
+  - **Andreaeobryopsida has a single species: Andreaeobryum *macrosporum*. No complete chloroplast genome is available.**
+  - **Oedipodiopsida has a single species: Oedipodium *griffithianum*. Using `OZ374950.1`.**
+- Takakiopsida (two species in genus Takakia): enigmatic moss lineage.
+  - Two species in Akakipsida: Takakia *ceratophylla* and Takakia *lepidozioides*
+  - **Found complete chloroplast genomes for *lepidozioides*: `AP014702.1`**
+
+### 6/1/2026
+
+I just filled in some assemblies from missing classes. All the ones added are not in RefSeq but are complete chloroplast 
+genomes.
+
+```bash
+cat plastome_metadata.tsv addons/*/*meta.tsv  > plastome_metadata.with_addon.tsv
+cat taxonomy.tsv addons/*/*taxonomy.tsv  > taxonomy.with_addon.tsv
+python3 merge_meta.py plastome_metadata.with_addon.tsv taxonomy.with_addon.tsv > plastome_metadata_with_taxonomy.tsv
+```
+
+Now download all the assemblies. Just gonna download the entire refseq plastid archive then add the missing assemblies.
+
+```bash
+for i in 1 2 3; do
+  wget https://ftp.ncbi.nlm.nih.gov/refseq/release/plastid/plastid.${i}.1.genomic.fna.gz
+done
+
+for file in *genomic.fna.gz; do
+  cut -f1 plastome_metadata.with_addon.tsv | seqkit grep -f - $file >> plastomes.fa
+done
+
+cat addons/*/*fa >> plastomes.fa 
+rm *genomic.fna.gz
+```
+
+Looks like we got everything.
+
+```console
+$ seqkit stats plastomes.fa
+file          format  type  num_seqs        sum_len  min_len    avg_len  max_len
+plastomes.fa  FASTA   DNA     12,452  1,910,342,521   15,553  153,416.5  345,184
+
+$ wc -l plastome_metadata.with_addon.tsv
+12452 plastome_metadata.with_addon.tsv
+```
+
+Plot genome length distribution.
+
+```bash
+python3 scripts/plot_genome_len_dist.py misc_data/genome_len.tsv 
+```
+
+![genome length distribution](embryophyta_cp/figures/genome_length_distribution.png)
+
+345,184 is very long for a chloroplast genome. And it belongs to `NC_066227.1`.
+
+```console
+$ seqkit fx2tab plastomes.fa -nl | awk '{print $1,$NF}' |  sort -k2,2 -gr | head -n 5
+NC_066227.1 345184
+NC_031206.1 242575
+NC_084419.1 234657
+NC_088443.1 232302
+NC_056348.1 232020
+```
+
+According to this [paper](https://www.biorxiv.org/content/10.1101/2025.10.06.680833v3), it's misassembled. The two other
+assemblies on [NCBI](https://www.ncbi.nlm.nih.gov/nuccore/?term=Magnolia+patungensis%5BORGN%5D+AND+chloroplast%5Bfilter%5D+AND+(%22complete+genome%22%5BTitle%5D+OR+%22complete+plastid+genome%22%5BTitle%5D+OR+%22complete+chloroplast+genome%22%5BTitle%5D)) that are in RefSeq have 160,120 bp and 160,139 bp.
+
+**Perhaps, I need to do some more qc.**
+
+Nonetheless, I'm gonna self-align the chloroplast genomes using nucmer to identify the quadripartite regions.
+
+```bash
+parallel -j 64 'prefix=$(basename {1} .fa); bash ~/tools/misc/mummer_align_self_cpg.sh {1} {1} regions/${prefix}/${prefix}' ::: fastas/*.fa
+```
+
+I will also get all the Embryophyta chloroplast genomes from NCBI without the refseq filter to check for weird refseq
+genomes. Follow commands from 5/29/2026 without the `refseq[filter]`.
+
+
+## Population Populus PanMAT
+
+### 6/1/2026
+
+Working on the population Populus PanMAT that Zihao sent me. This to do population levle analysis for genomes of 
+P. *trichocarpa* and P. *balsamifera*.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/panmama/salicaceae/data/For_Alan_population_level_panmat/cp; cd $wdir
+```
+
+According to Zihao, one IR was removed and the regions were aligned and concatenated using 100 Ns.
+
+Gonna remove the N's using a custom script (made with Claude with close supervision).
+
+```bash
+python3 split_regions.py PopPt_31_conca_raw_Ns.fasta 100
+mkdir -p split
+mv region_1.fasta split/LSC.fasta
+mv region_2.fasta split/IR.fasta
+mv region_3.fasta split/SSC.fasta
+```
+
+```console
+$ seqkit seq -w 0 PopPt_31_conca_raw_Ns.fasta | tr -d '-' | seqkit fx2tab -nl
+KJ664926        129809
+MW376847        128879
+NC_037417       151181
+SRR11622733     129521
+SRR12235434     129424
+SRR13324505     129463
+SRR13324525     129291
+SRR13324536     129161
+SRR1569613      129546
+SRR1759777      129429
+SRR25364191     129408
+SRR25364192     129379
+SRR25364205     129630
+SRR25364217     129314
+SRR25364243     129430
+SRR25364246     129364
+SRR25364261     129410
+SRR25364275     129491
+SRR25364283     129288
+SRR25364330     129320
+SRR25364397     129444
+SRR25364471     129591
+SRR25364489     129550
+SRR25364510     129333
+SRR25364569     129428
+SRR25364585     129226
+SRR25364663     129339
+SRR25364685     129395
+SRR25364729     129478
+SRR3045866      129030
+SRR35248031     129750
+```
+
+One assemnly `NC_037417` seems weirdly long. after removing gaps. 
+
+```console
+$ seqkit grep -p NC_037417 PopPt_31_conca_raw_Ns.fasta | seqkit seq -w 0 | tr -d '-' | sed  's/NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN//g' | seqkit stats
+file  format  type  num_seqs  sum_len  min_len  avg_len  max_len
+-     FASTA   DNA          1  149,981  149,981  149,981  149,981
+```
+
+The full genome length is 158,551 bp but its sequence length after removing an IR region is 149,981 bp? `NC_037417` is
+Populus *pruinosa* and likely an outgroup. For some reason the outgroup is not split up correctly...
+
+Gonna ask Zihao to check if the outgroup is split up and concatednated correctly.
+
+### 6/2/2026
+
+Zihao just sent me the fixed version. Gonna check it now.
+
+`NC_037417` looks good now.
+
+```console
+$ seqkit seq -w 0 PopPt_31_conca_raw_Ns_fixed.fasta | tr -d '-' | seqkit fx2tab -nl | head
+KJ664926        129809
+MW376847        128879
+NC_037417       130626
+SRR11622733     129521
+SRR12235434     129424
+SRR13324505     129463
+SRR13324525     129291
+SRR13324536     129161
+SRR1569613      129546
+SRR1759777      129429
+```
+
+Now remove N's and split the regions.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/panmama/salicaceae/data/For_Alan_population_level_panmat/cp; cd $wdir
+
+python3 split_regions.py PopPt_31_conca_raw_Ns.fasta 100
+mkdir -p split
+mv region_1.fasta split/LSC.fasta
+mv region_2.fasta split/IR.fasta
+mv region_3.fasta split/SSC.fasta
+```
+
+Regions also have expected lengths with no weirdness.
+
+```console
+$ (echo -e 'file\tnum_seq\tmin_len\tmax_len\tavg_len' && for file in split/*; do stats=$(seqkit seq -w 0 $file | tr -d '-' | seqkit stats | tail -n 1 | awk -v OFS='\t' '{print $4,$6,$8,$7}'); echo -e "${file}\t${stats}"  ; done) | column -t
+file             num_seqs  min_len  max_len  avg_len
+split/IR.fasta   31        27,034   28,125   27,654.5
+split/LSC.fasta  31        84,641   85,761   85,015.2
+split/SSC.fasta  31        16,318   16,659   16,573.7
+```
+
+I just confirmed that the regions should be concatenated in the order of LSC, IR, SSC. (NOT SSC, IR, LSC).
+
+<details>
+<summary>See alignment</summary>
+
+`NC_037417.partial.fa` is concated from LSC, IR, SSC. It's obviously the correct one compared to
+`NC_037417.partial2.fa`. The mismatch was the artifact of me arbitrarily substituing an `M` to an `A` in the original 
+fasta file for `cpstools`.
+
+```console
+$ seqkit concat split/LSC.fasta split/IR.fasta split/SSC.fasta | seqkit grep -p NC_037417 | seqkit seq -w 0  | tr -d '-' > NC_037417.partial.fa
+$ minimap2 -x asm5 -a --MD NC_037417.fasta  NC_037417.partial.fa  2> /dev/null | cut -f 10 --complement | grep -v '^@'  | column -t 
+NC_037417  0  NC_037417.1  1  60  130426M  *  0  0  *  NM:i:1  ms:i:130424  AS:i:130424  nn:i:1  tp:A:P  cm:i:13022  s1:i:130378  s2:i:28109  de:f:0.0000  MD:Z:8987A121438  rl:i:0
+```
+
+`NC_037417.partial2.fa` is concated from SSC, IR, LSC.
+
+```console
+$ seqkit concat split/SSC.fasta split/IR.fasta split/LSC.fasta| seqkit grep -p NC_037417 | seqkit seq -w 0  | tr -d '-' > NC_037417.partial2.fa
+$ minimap2 -x asm5 -a --MD NC_037417.fasta  NC_037417.partial2.fa  2> /dev/null | cut -f 10 --complement | grep -v '^@'  | column -t 
+NC_037417  0     NC_037417.1  1       60  44665S85761M        *  0  0  *  NM:i:1  ms:i:85759  AS:i:85759  nn:i:1  tp:A:P  cm:i:8577  s1:i:85720  s2:i:0      de:f:0.0000  SA:Z:NC_037417.1,85760,+,16538S28129M85759S,1,0;NC_037417.1,113887,+,16540M113886S,60,0;  MD:Z:8987A76773  rl:i:0
+NC_037417  2048  NC_037417.1  85760   1   16538H28129M85759H  *  0  0  *  NM:i:0  ms:i:28129  AS:i:28129  nn:i:0  tp:A:P  cm:i:2782  s1:i:28114  s2:i:28109  de:f:0       SA:Z:NC_037417.1,1,+,44665S85761M,60,1;NC_037417.1,113887,+,16540M113886S,60,0;           MD:Z:28129       rl:i:0
+NC_037417  272   NC_037417.1  130427  0   85761S28125M16540S  *  0  0  *  NM:i:0  ms:i:28125  AS:i:28125  nn:i:0  tp:A:S  cm:i:2781  s1:i:28109  de:f:0      MD:Z:28125   rl:i:0                                                                                                     
+NC_037417  2048  NC_037417.1  113887  60  16540M113886H       *  0  0  *  NM:i:0  ms:i:16540  AS:i:16540  nn:i:0  tp:A:P  cm:i:1658  s1:i:16519  s2:i:0      de:f:0       SA:Z:NC_037417.1,1,+,44665S85761M,60,1;NC_037417.1,85760,+,16538S28129M85759S,1,0;        MD:Z:16540       rl:i:0
+```
+
+</details>
+
+Remove the 100-N linker from MSA
+
+```bash
+seqkit seq -w 0 PopPt_31_conca_raw_Ns_fixed.fasta \
+  | sed 's/NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN//g' \
+  > PopPt_31_conca_raw_Ns_removed.fasta
+```
+
+<details>
+<summary>Sanity check</summary>
+
+```console
+$ seqkit concat split/LSC.fasta split/IR.fasta split/SSC.fasta > PopPt_31_regions_concat.fasta
+$ seqkit sum PopPt_31_conca_raw_Ns_removed.fasta PopPt_31_regions_concat.fasta
+seqkit.v0.1_DLS_k0_5aaecdb09efb77c02506dc2f83b39afa     PopPt_31_conca_raw_Ns_removed.fasta
+seqkit.v0.1_DLS_k0_5aaecdb09efb77c02506dc2f83b39afa     PopPt_31_regions_concat.fasta
+```
+
+</details>
+
+Now build a PanMAN and run panmap on the data
+
+```bash
+/scratch1/alan/panmap/build/bin/panmanUtils -M PopPt_31_conca_raw_Ns_removed.fasta -N PopPt_31_ultrametric.nwk -o PopPt_31
+
+/scratch1/alan/panmap/build/bin/panmap PopPt_31.panman --index-mgsr PopPt_31.panman.idx -k 15 -s 8 -l 1
+
+mkdir results
+for read in aeDNA/Clade1_besthit_diff_1.ChrPt.remap.dedup.fastq.gz aeDNA/Populus_besthit_diff_1.ChrPt.remap.fastq.gz; do
+  /scratch1/alan/panmap/build/bin/panmap PopPt_31.panman \
+    $read \
+    -i PopPt_31.panman.idx \
+    --meta --filter-and-assign \
+    --discard 0.5  -t 8 \
+    --output results/$(basename $read .fastq.gz)
+done
+```
+
+
+
 

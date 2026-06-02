@@ -107,13 +107,16 @@ fa_file = sys.argv[1]
 prefix = sys.argv[2]
 
 dir_name = os.path.dirname(prefix)
+base_name = os.path.basename(prefix)
 if dir_name:
   os.makedirs(dir_name, exist_ok=True)
 
 
-intermediates_dir = os.path.join(dir_name, prefix + "_intermediates")
+intermediates_dir = os.path.join(dir_name, base_name + "_intermediates")
+
 os.makedirs(intermediates_dir, exist_ok=True)
-intermediates_prefix = os.path.join(intermediates_dir, prefix)
+intermediates_prefix = os.path.join(intermediates_dir, base_name)
+
 
 record = next(SeqIO.parse(fa_file, "fasta"))
 header = record.id
