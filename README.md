@@ -5710,6 +5710,29 @@ for read in aeDNA/Clade1_besthit_diff_1.ChrPt.remap.dedup.fastq.gz aeDNA/Populus
     --discard 0.5  -t 8 \
     --output results/$(basename $read .fastq.gz)
 done
+
+for file in results/*mgsr.assignedReadsLCANode.out; do
+  prefix=$(basename $file .assignedReadsLCANode.out)
+  python3 plot_results.py -t PopPt_31.panman.nwk \
+    -l $file \
+    -n results/${prefix}.assignedReads.out \
+    -m pop.meta.tsv \
+    --color-node-labels common_name \
+    -g 0.7 \
+    --color-by lca_subtree_count \
+    --size-by lca_count \
+    -o results/${prefix}.lca_subtree &
+
+  python3 plot_results.py -t PopPt_31.panman.nwk \
+    -l $file \
+    -n results/${prefix}.assignedReads.out \
+    -m pop.meta.tsv \
+    --color-node-labels common_name \
+    -g 0.7 \
+    -o results/${prefix} &
+  wait
+done
+
 ```
 
 
