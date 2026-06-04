@@ -5721,7 +5721,7 @@ for file in results/*mgsr.assignedReadsLCANode.out; do
     -g 0.7 \
     --color-by lca_subtree_count \
     --size-by lca_count \
-    -o results/${prefix}.lca_subtree &
+    -o results/${prefix}.subtree &
 
   python3 plot_results.py -t PopPt_31.panman.nwk \
     -l $file \
@@ -5729,12 +5729,92 @@ for file in results/*mgsr.assignedReadsLCANode.out; do
     -m pop.meta.tsv \
     --color-node-labels common_name \
     -g 0.7 \
-    -o results/${prefix} &
+    -o results/${prefix}.lca &
+  
+  python3 plot_results.py -t PopPt_31.panman.nwk \
+    -l $file \
+    -n results/${prefix}.assignedReads.out \
+    -m pop.meta.tsv \
+    --color-node-labels common_name \
+    -g 0.7 \
+    --color-by fractionated_read_count \
+    --size-by lca_count \
+    -o results/${prefix}.fractionated &
   wait
 done
 
 ```
 
+### 6/3/2026
 
+Ooops, there's also mito data to run for Zihao in the same data directory that he sent me.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/panmama/salicaceae/data/For_Alan_population_level_panmat/mt
+cd $wdir
+```
+
+The fasta file has the expected number of 100-N linked bases for all the entries.
+
+```console
+$seqkit seq -w 0 PopMt_32_conca.raw.Ns.fasta | grep -on 'NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN' | cut -f1 -d ':' | sort | uniq -c | awk '{print $1}' | sort | uniq -c 
+     32 593
+```
+
+Remove the 100-N linked bases. Then build a PanMAN and run panmap on the data
+
+```bash
+seqkit seq -w 0 PopMt_32_conca.raw.Ns.fasta \
+  | sed 's/NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN//g' \
+  > PopMt_32_conca.raw.Ns_removed.fasta
+
+/scratch1/alan/panmap/build/bin/panmanUtils -M PopMt_32_conca.raw.Ns_removed.fasta -N PopMt_32_taxon_ultrametric.nwk -o PopMt_32
+
+/scratch1/alan/panmap/build/bin/panmap PopMt_32.panman --index-mgsr PopMt_32.panman.idx -k 15 -s 8 -l 1
+
+mkdir results
+for read in aeDNA/Clade1_besthit_diff_1.ChrMt.remap.dedup.fastq.gz  aeDNA/Populus_besthit_diff_1.ChrMt.remap.dedup.fastq.gz; do
+  /scratch1/alan/panmap/build/bin/panmap PopMt_32.panman \
+    $read \
+    -i PopMt_32.panman.idx \
+    --meta --filter-and-assign \
+    --discard 0.5  -t 8 \
+    --output results/$(basename $read .fastq.gz)
+done
+
+for file in results/*mgsr.assignedReadsLCANode.out; do
+  prefix=$(basename $file .assignedReadsLCANode.out)
+
+  python3 plot_results.py -t PopMt_32.panman.nwk \
+    -l $file \
+    -n results/${prefix}.assignedReads.out \
+    -g 0.7 \
+    --color-by lca_subtree_count \
+    --size-by lca_count \
+    -o results/${prefix}.subtree &
+
+  python3 plot_results.py -t PopMt_32.panman.nwk \
+    -l $file \
+    -n results/${prefix}.assignedReads.out \
+    -g 0.7 \
+    -o results/${prefix}.lca &
+
+  python3 plot_results.py -t PopMt_32.panman.nwk \
+    -l $file \
+    -n results/${prefix}.assignedReads.out \
+    -g 0.7 \
+    --color-by fractionated_read_count \
+    --size-by lca_count \
+    -o results/${prefix}.fractionated &
+
+  wait
+done 
+
+```
+
+### 6/4/2026
+
+It seems like Zihao might have wanted the read counts to be split between tied genomes. I will implement this and rerun
+the samples... Actually, I can just use the output file to compute it.. Added in the code blocks above.
 
 
