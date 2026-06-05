@@ -5532,6 +5532,125 @@ parallel -j 64 'prefix=$(basename {1} .fa); bash ~/tools/misc/mummer_align_self_
 I will also get all the Embryophyta chloroplast genomes from NCBI without the refseq filter to check for weird refseq
 genomes. Follow commands from 5/29/2026 without the `refseq[filter]`.
 
+### 6/4/2026
+
+I'm gonna follow [paper](https://www.biorxiv.org/content/10.1101/2025.10.06.680833v3) to do some quality control.
+
+First let's take a look at the 16S rRNA and 23s rRNA genes, or RF00177 (bacterial SSU/16S rRNA) and RF02541 (bacterial
+LSU/23S rRNA)
+
+```bash
+wdir=/scratch1/alan/lab_notebook/embryophyta_cp/rrnas; mkdir -p $wdir; cd $wdir
+
+mkdir rfam_models
+wget https://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/fasta_files/RF00177.fa.gz -O rfam_models/RF00177.fa.gz
+wget https://rfam.org/family/RF00177/cm -O rfam_models/RF00177.cm
+wget https://rfam.org/family/RF02541/cm -O rfam_models/RF02541.cm
+
+cat rfam_models/*cm > rfam_models/plastid_rrna.cm
+cmpress rfam_models/plastid_rrna.cm
+
+mkdir rrna_hits
+parallel -j 64 '
+  chunk={1};
+  base=$(basename $chunk .fa);
+  cmsearch \
+    --rfam \
+    --cpu 1 \
+    -E 0.001 \
+    --tblout rrna_hits/${base}.tbl \
+    --noali \
+    rfam_models/plastid_rrna.cm \
+    $chunk > rrna_hits/${base}.out
+' ::: ../fastas/*.fa
+```
+
+Consolidate the results and create a summary.
+
+```bash
+head -n2 rrna_hits/AB684440.1.tbl > rrna_hits_all.tbl
+for f in rrna_hits/*.tbl; do
+  grep -v '^#' $f >> rrna_hits_all.tbl
+done
+
+awk '!/^#/ {print $1"\t"$3"\t"$16}' rrna_hits_all.tbl \
+  | sort -k1,1 -k2,2 \
+  | awk '
+      {
+        key=$1"\t"$2;
+        count[key]++;
+        if (best[key]=="" || $3+0 < best[key]+0) best[key]=$3;
+      }
+      END {
+        for (k in count) print k"\t"count[k]"\t"best[k];
+      }' \
+  | sort -k1,1 -k2,2 > rrna_per_genome.tsv
+
+cut -f1 ../plastome_metadata.tsv | sort -u > all_accessions.txt
+
+awk '$2=="SSU_rRNA_bacteria"' rrna_per_genome.tsv | cut -f1 | sort -u > has_16s.txt
+awk '$2=="LSU_rRNA_bacteria"' rrna_per_genome.tsv | cut -f1 | sort -u > has_23s.txt
+
+comm -23 all_accessions.txt has_16s.txt > missing_16s.txt
+comm -23 all_accessions.txt has_23s.txt > missing_23s.txt
+```
+
+Only one genome is missing the 16S and 23S rRNA genes. `NC_037503.1` is *Asarum minus* in the Asaraceae family. There
+are 5 other Asarum species in our dataset, all of which have the 16S and 23S rRNA genes. `NC_037503.1` is also
+significantly shorter than the other Asarum species (~15 kb vs ~190 kb), an obvious sign of misassembly/miss-annotation.
+
+<details>
+
+<summary>See details</summary>
+
+```console
+$ tail -n+1 missing_*
+==> missing_16s.txt <==
+NC_037503.1
+
+==> missing_23s.txt <==
+NC_037503.1
+
+$ awk '$9 == "Asarum"' ../plastome_metadata.with_taxonomy.tsv 
+NC_086579.1     3113364 190179  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum chungbuensis     None    Asarum  chungbuensis    None    None    None    None    None    None    None    None    Asarum chungbuensis chloroplast, complete genome
+NC_077489.1     447319  192892  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum splendens        None    Asarum  splendens       None    None    None    None    None    None    None    None    Asarum splendens chloroplast, complete genome
+NC_058740.1     366670  193105  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum sieboldii f. maculatum   None    Asarum  sieboldii       None    None    None    None    None    None    None    None    Asarum maculatum voucher NIBRVP0000640516, 2006.4.1. chloroplast, complete genome
+NC_058739.1     366669  193163  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum misandrum        None    Asarum  misandrum       None    None    None    None    None    None    None    None    Asarum misandrum voucher NIBRVP0000640514, 2007.4.1. chloroplast, complete genome
+NC_037503.1     76132   15553   Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum minus    None    Asarum  minus   None    None    None    None    None    None    None    None    Asarum minus chloroplast, complete genome
+NC_037190.1     76098   193356  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum sieboldii        None    Asarum  sieboldii       None    None    None    None    None    None    None    None    Asarum sieboldii voucher NIBR-VP0000640510 chloroplast, complete genome
+
+$ awk '$9 == "Asarum"' ../plastome_metadata.with_taxonomy.tsv | cut -f1 | grep -f - rrna_per_genome.tsv
+NC_037190.1     LSU_rRNA_bacteria       2       0
+NC_037190.1     SSU_rRNA_bacteria       2       0
+NC_058739.1     LSU_rRNA_bacteria       2       0
+NC_058739.1     SSU_rRNA_bacteria       2       0
+NC_058740.1     LSU_rRNA_bacteria       2       0
+NC_058740.1     SSU_rRNA_bacteria       2       0
+NC_077489.1     LSU_rRNA_bacteria       2       0
+NC_077489.1     SSU_rRNA_bacteria       2       0
+NC_086579.1     LSU_rRNA_bacteria       2       0
+NC_086579.1     SSU_rRNA_bacteria       2       0
+
+$ awk '$9 == "Asarum"' ../plastome_metadata.with_taxonomy.tsv | cut -f1 | grep -f - ../misc_data/genome_len.tsv 
+NC_037190.1     193356
+NC_058739.1     193163
+NC_058740.1     193105
+NC_077489.1     192892
+NC_086579.1     190179
+NC_037503.1     15553
+```
+
+</details>
+<br/>
+
+Good idea to check if genomes within the same family have consistent genome sizes. Plot the genome length distribution
+by family, skipping families with less than 2 genomes and genome length range less than 10,000 bp.
+
+```bash
+python3 scripts/plot_len_by_taxon.py plastome_metadata.with_taxonomy.tsv -o figures/len_dist_by_taxon.png --box-width 0.3 --xtick-length 6.0
+```
+
+![genome length distribution by family](embryophyta_cp/figures/len_dist_by_taxon.png)
 
 ## Population Populus PanMAT
 
