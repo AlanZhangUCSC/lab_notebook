@@ -15,9 +15,22 @@ This notebook will track the progress of my work in the lab.
 
 ## Projects
 
+### Active
+
 [Population Populus PanMAT](#population-populus-panmat)
 
 [Land plant-wide chloroplast PanMAN](#land-plant-wide-chloroplast-panman)
+
+[Modern eDNA project](#modern-edna-project)
+
+[Human mitochondria](#human-mitochondria)
+
+### Inactive
+
+[Reviewing CasPhy](#reviewing-casphy)
+
+[Panmap Revisions](#panmap-revisions)
+
 
 ## 1/30/2025
 
@@ -5368,289 +5381,93 @@ And build a PanMAN from the first alignment to see how it looks
   -o aluyx
 ```
 
-## Land plant-wide chloroplast PanMAN
+## Reviewing CasPhy
 
-### 5/29/2026
+Checking out their [github](https://github.com/LiLin-biosoft/CasPhy) and the [cuda version](https://github.com/LiLin-biosoft/CasPhy-cuda).
 
-I just had my committee meeting. It went well. The committee members were happy with my progress. They warn me that
-modern sequencing capability allows us to fairly easily and cheaply assemble genomes to discover TEs and curate
-reference pangenome pangenomes could also be used by mapping reads directly to the pangenome to identify TE copies.
-
-**They recommended me to fully consider building a land plant-wide chloroplast PanMAN**
-
-Searching all the complete land plant chloroplast genomes in RefSeq. In NCBI (nucleotide), search use this query:
-
-```text
-Embryophyta[ORGN] AND chloroplast[filter] AND ("complete genome"[Title] OR "complete plastid genome"[Title] OR "complete chloroplast genome"[Title]) AND refseq[filter] 
-```
-
-There are 12449 results as of 11:36 AM on 5/29/2026.
-
-Get the list of accession numbers and metadata.
+Create an `environment.yml` file for the conda environment, then create the environment:
 
 ```bash
-# Get accession numbers, taxids, names, etc.
-esearch -db nuccore -query 'Embryophyta[ORGN] AND chloroplast[filter] AND ("complete genome"[Title] OR "complete plastid genome"[Title] OR "complete chloroplast genome"[Title]) AND refseq[filter]' \
-  | esummary \
-  | xtract -pattern DocumentSummary \
-      -element AccessionVersion,TaxId,Organism,Slen,CreateDate,UpdateDate,Title \
-  > plastome_metadata.tsv
-
-# Get taxonomy
-cut -f2 plastome_metadata.tsv | sort -u > taxids.txt
-
-epost -db taxonomy -input taxids.txt \
-  | efetch -format xml \
-  | xtract -pattern Taxon -tab "\t" \
-      -KING "(-)" -PHYL "(-)" -CLSS "(-)" -ORDR "(-)" -FMLY "(-)" -GNUS "(-)" \
-      -block "*/Taxon" \
-        -if Rank -equals "kingdom" -KING ScientificName \
-        -if Rank -equals "phylum"  -PHYL ScientificName \
-        -if Rank -equals "class"   -CLSS ScientificName \
-        -if Rank -equals "order"   -ORDR ScientificName \
-        -if Rank -equals "family"  -FMLY ScientificName \
-        -if Rank -equals "genus"   -GNUS ScientificName \
-      -group Taxon \
-        -element TaxId,ScientificName,"&KING","&PHYL","&CLSS","&ORDR","&FMLY","&GNUS" \
-  > taxonomy.tsv
-
-python3 merge_meta.py plastome_metadata.tsv taxonomy.tsv > plastome_metadata_with_taxonomy.tsv
+conda env create -f environment.yml
+conda activate casphy
 ```
 
-Special cases are handled as follows:
-
-| Scientific name type | Example | Parsing strategy |
-| --------------------- | ------- | ----------- |
-| Genus hybrid cultivar | Aeonium hybrid cultivar | set species name to `sp.` and hybrid type to `hybrid_cultivar` |
-| \[Genus\] species ... | \[Polygonum\] chinense var. procumbens | set genus to `Genus` without the square brackets |
-| aff. samples | Euphorbia aff. neococcinea Luke s.n. | set species name to `sp.`|
-| cf. samples | Urera cf. cordifolia Ur15 | set species name to `sp.`|
-| subsp. samples | Brassica rapa subsp. rapa | set subspecies name |
-| var. samples | Capsicum baccatum var. pendulum | set varietas name |
-| sp. samples | Tetrastigma sp. Wen 12461 | set species name to `sp.` and uniden_id to identifiers after `sp.`, e.g. `Wen 12461` |
-
-We have chloroplast genomes from a total of 16 classes.
-
-```console
-$ cut -f 6 plastome_metadata_with_taxonomy.tsv | sort -u
-Andreaeopsida
-Anthocerotopsida
-Bryopsida
-Cycadopsida
-Gnetopsida
-Haplomitriopsida
-Jungermanniopsida
-Leiosporocerotopsida
-Lycopodiopsida
-Magnoliopsida
-Marchantiopsida
-Pinopsida
-Polypodiopsida
-Polytrichopsida
-Sphagnopsida
-Tetraphidopsida
-```
-
-Seems like we are missing:
-
-- Ginkgoopsida (Ginkos): the missing gymnosperm class
-  - **Found many complete Ginko chloroplast genomes but none are in refseq, using `AB684440.1`**
-- Andreaeobryopsida and Oedipodiopsida (two moss classes): very tiny classes with very few species
-  - **Andreaeobryopsida has a single species: Andreaeobryum *macrosporum*. No complete chloroplast genome is available.**
-  - **Oedipodiopsida has a single species: Oedipodium *griffithianum*. Using `OZ374950.1`.**
-- Takakiopsida (two species in genus Takakia): enigmatic moss lineage.
-  - Two species in Akakipsida: Takakia *ceratophylla* and Takakia *lepidozioides*
-  - **Found complete chloroplast genomes for *lepidozioides*: `AP014702.1`**
-
-### 6/1/2026
-
-I just filled in some assemblies from missing classes. All the ones added are not in RefSeq but are complete chloroplast 
-genomes.
+Launch `R` then run
 
 ```bash
-cat plastome_metadata.tsv addons/*/*meta.tsv  > plastome_metadata.with_addon.tsv
-cat taxonomy.tsv addons/*/*taxonomy.tsv  > taxonomy.with_addon.tsv
-python3 merge_meta.py plastome_metadata.with_addon.tsv taxonomy.with_addon.tsv > plastome_metadata_with_taxonomy.tsv
+remotes::install_github("LiLin-biosoft/CasPhy", build_vignettes = TRUE, upgrade = "never")
 ```
 
-Now download all the assemblies. Just gonna download the entire refseq plastid archive then add the missing assemblies.
+## Panmap Revisions
+
+### 7/2/2026
+
+This for part of the response to reviewer 2's comment:
+
+> Lines 436-438, 452-455 the authors state the tool can perform pathogen surveillance or cross-species taxonomic assignment but there seems to be a big caveat with these claims. The experiments in the paper only use mixed viral samples and pick out single viral subtypes or use a highly conserved region (like the mito though I suspect 16S may work?) not general metagenomic classification. I'd suggest toning down these claims due to this limitation. I'd also be interested in some quantification of how diverse of a set of genomes can I put into the tree/panmap without losing efficiency? Would it scale to human pangenomes? Could I build a tree of all extant apes (human and non-human)? All E.coli or all bacteria?
+
+This honestly feels like more a question to PanMAN. 
+
+### 7/8/2026
+
+Gonna align the assigned reads from Wang et al. 2026 to their respective mito genomes.
 
 ```bash
-for i in 1 2 3; do
-  wget https://ftp.ncbi.nlm.nih.gov/refseq/release/plastid/plastid.${i}.1.genomic.fna.gz
+wdir=/scratch1/alan/lab_notebook/review/panmap; cd $wdir
+
+# collect the assigned reads for each taxon for each sample
+for file in ERR645_all_full_qc_out_k15_0.6mps/*fastq; do
+  prefix=$(basename $file .filter_and_assign.mgsr.assignedReads.fastq)
+  python3 collect_reads.py ERR645_all_full_qc_out_k15_0.6mps/${prefix} all nodeFamilies.tsv assigned_reads/${prefix}
 done
 
-for file in *genomic.fna.gz; do
-  cut -f1 plastome_metadata.with_addon.tsv | seqkit grep -f - $file >> plastomes.fa
+# merge all reads for the same taxon from all the samples
+mkdir merged
+find . -mindepth 2 -maxdepth 2 -type f -name "*.fastq" ! -path "./merged/*" \
+  -printf "%f\n" | sort -u |
+while read -r name; do
+  find . -mindepth 2 -maxdepth 2 -type f -name "$name" ! -path "./merged/*" \
+    -print0 | sort -z | xargs -0 cat > "merged/$name"
 done
 
-cat addons/*/*fa >> plastomes.fa 
-rm *genomic.fna.gz
-```
+# align the merged reads to the mito genomes
+python3 align_family.py \
+  fastas \
+  assigned_reads/merged \
+  v_mtdna.meta.tsv \
+  --out_dir aligned_reads
 
-Looks like we got everything.
-
-```console
-$ seqkit stats plastomes.fa
-file          format  type  num_seqs        sum_len  min_len    avg_len  max_len
-plastomes.fa  FASTA   DNA     12,452  1,910,342,521   15,553  153,416.5  345,184
-
-$ wc -l plastome_metadata.with_addon.tsv
-12452 plastome_metadata.with_addon.tsv
-```
-
-Plot genome length distribution.
-
-```bash
-python3 scripts/plot_genome_len_dist.py misc_data/genome_len.tsv 
-```
-
-![genome length distribution](embryophyta_cp/figures/genome_length_distribution.png)
-
-345,184 is very long for a chloroplast genome. And it belongs to `NC_066227.1`.
-
-```console
-$ seqkit fx2tab plastomes.fa -nl | awk '{print $1,$NF}' |  sort -k2,2 -gr | head -n 5
-NC_066227.1 345184
-NC_031206.1 242575
-NC_084419.1 234657
-NC_088443.1 232302
-NC_056348.1 232020
-```
-
-According to this [paper](https://www.biorxiv.org/content/10.1101/2025.10.06.680833v3), it's misassembled. The two other
-assemblies on [NCBI](https://www.ncbi.nlm.nih.gov/nuccore/?term=Magnolia+patungensis%5BORGN%5D+AND+chloroplast%5Bfilter%5D+AND+(%22complete+genome%22%5BTitle%5D+OR+%22complete+plastid+genome%22%5BTitle%5D+OR+%22complete+chloroplast+genome%22%5BTitle%5D)) that are in RefSeq have 160,120 bp and 160,139 bp.
-
-**Perhaps, I need to do some more qc.**
-
-Nonetheless, I'm gonna self-align the chloroplast genomes using nucmer to identify the quadripartite regions.
-
-```bash
-parallel -j 64 'prefix=$(basename {1} .fa); bash ~/tools/misc/mummer_align_self_cpg.sh {1} {1} regions/${prefix}/${prefix}' ::: fastas/*.fa
-```
-
-I will also get all the Embryophyta chloroplast genomes from NCBI without the refseq filter to check for weird refseq
-genomes. Follow commands from 5/29/2026 without the `refseq[filter]`.
-
-### 6/4/2026
-
-I'm gonna follow [paper](https://www.biorxiv.org/content/10.1101/2025.10.06.680833v3) to do some quality control.
-
-First let's take a look at the 16S rRNA and 23s rRNA genes, or RF00177 (bacterial SSU/16S rRNA) and RF02541 (bacterial
-LSU/23S rRNA)
-
-```bash
-wdir=/scratch1/alan/lab_notebook/embryophyta_cp/rrnas; mkdir -p $wdir; cd $wdir
-
-mkdir rfam_models
-wget https://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/fasta_files/RF00177.fa.gz -O rfam_models/RF00177.fa.gz
-wget https://rfam.org/family/RF00177/cm -O rfam_models/RF00177.cm
-wget https://rfam.org/family/RF02541/cm -O rfam_models/RF02541.cm
-
-cat rfam_models/*cm > rfam_models/plastid_rrna.cm
-cmpress rfam_models/plastid_rrna.cm
-
-mkdir rrna_hits
-parallel -j 64 '
-  chunk={1};
-  base=$(basename $chunk .fa);
-  cmsearch \
-    --rfam \
-    --cpu 1 \
-    -E 0.001 \
-    --tblout rrna_hits/${base}.tbl \
-    --noali \
-    rfam_models/plastid_rrna.cm \
-    $chunk > rrna_hits/${base}.out
-' ::: ../fastas/*.fa
-```
-
-Consolidate the results and create a summary.
-
-```bash
-head -n2 rrna_hits/AB684440.1.tbl > rrna_hits_all.tbl
-for f in rrna_hits/*.tbl; do
-  grep -v '^#' $f >> rrna_hits_all.tbl
+# get the bet alignment for each taxon
+for file in aligned_reads/*; do
+  prefix=$(basename $file .merged.bam)
+  python3 best_alignment.py $file aligned_reads/${prefix}.best.bam
 done
 
-awk '!/^#/ {print $1"\t"$3"\t"$16}' rrna_hits_all.tbl \
-  | sort -k1,1 -k2,2 \
-  | awk '
-      {
-        key=$1"\t"$2;
-        count[key]++;
-        if (best[key]=="" || $3+0 < best[key]+0) best[key]=$3;
-      }
-      END {
-        for (k in count) print k"\t"count[k]"\t"best[k];
-      }' \
-  | sort -k1,1 -k2,2 > rrna_per_genome.tsv
+# Get a summary of the alignable reads for each family.
+(for file in aligned_reads/*best.bam; do
+  prefix=$(basename $file .best.bam)
+  num=$(samtools view $file | wc -l)
+  echo -e "${prefix}\t${num}"
+done) | sort -k2,2 -gr > aligned_reads_count.tsv
 
-cut -f1 ../plastome_metadata.tsv | sort -u > all_accessions.txt
-
-awk '$2=="SSU_rRNA_bacteria"' rrna_per_genome.tsv | cut -f1 | sort -u > has_16s.txt
-awk '$2=="LSU_rRNA_bacteria"' rrna_per_genome.tsv | cut -f1 | sort -u > has_23s.txt
-
-comm -23 all_accessions.txt has_16s.txt > missing_16s.txt
-comm -23 all_accessions.txt has_23s.txt > missing_23s.txt
+# Plot damage
+mkdir aligned_damage
+for bam in aligned_reads/*best.bam; do
+  prefix=$(basename $bam .best.bam)
+  out_prefix=aligned_damage/${prefix}
+  python3 plot_damage.py compute --bam ${bam} --out-subs ${out_prefix}.subs.tsv --out-plot ${out_prefix}.plot.png --tax-name ${prefix} && \
+  python3 plot_damage.py score --in-subs ${out_prefix}.subs.tsv --out-tsv ${out_prefix}.score.tsv --tax-name ${prefix} &
+done
 ```
 
-Only one genome is missing the 16S and 23S rRNA genes. `NC_037503.1` is *Asarum minus* in the Asaraceae family. There
-are 5 other Asarum species in our dataset, all of which have the 16S and 23S rRNA genes. `NC_037503.1` is also
-significantly shorter than the other Asarum species (~15 kb vs ~190 kb), an obvious sign of misassembly/miss-annotation.
+### 7/14/2026
 
-<details>
+Today I'm going to add an option to output read assignments in jplace format.
 
-<summary>See details</summary>
+Before merging from remote, current commit on silverbullet is `774f636c966103990a7b39ae2eda1e0bb9e9f88c` followed by
+`442ee7e61192cacac866554bf69a608c42066c91` (`89b17ba0b0d9d3cabd185da3d15fb64d507cb2cd`).
 
-```console
-$ tail -n+1 missing_*
-==> missing_16s.txt <==
-NC_037503.1
 
-==> missing_23s.txt <==
-NC_037503.1
-
-$ awk '$9 == "Asarum"' ../plastome_metadata.with_taxonomy.tsv 
-NC_086579.1     3113364 190179  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum chungbuensis     None    Asarum  chungbuensis    None    None    None    None    None    None    None    None    Asarum chungbuensis chloroplast, complete genome
-NC_077489.1     447319  192892  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum splendens        None    Asarum  splendens       None    None    None    None    None    None    None    None    Asarum splendens chloroplast, complete genome
-NC_058740.1     366670  193105  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum sieboldii f. maculatum   None    Asarum  sieboldii       None    None    None    None    None    None    None    None    Asarum maculatum voucher NIBRVP0000640516, 2006.4.1. chloroplast, complete genome
-NC_058739.1     366669  193163  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum misandrum        None    Asarum  misandrum       None    None    None    None    None    None    None    None    Asarum misandrum voucher NIBRVP0000640514, 2007.4.1. chloroplast, complete genome
-NC_037503.1     76132   15553   Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum minus    None    Asarum  minus   None    None    None    None    None    None    None    None    Asarum minus chloroplast, complete genome
-NC_037190.1     76098   193356  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum sieboldii        None    Asarum  sieboldii       None    None    None    None    None    None    None    None    Asarum sieboldii voucher NIBR-VP0000640510 chloroplast, complete genome
-
-$ awk '$9 == "Asarum"' ../plastome_metadata.with_taxonomy.tsv | cut -f1 | grep -f - rrna_per_genome.tsv
-NC_037190.1     LSU_rRNA_bacteria       2       0
-NC_037190.1     SSU_rRNA_bacteria       2       0
-NC_058739.1     LSU_rRNA_bacteria       2       0
-NC_058739.1     SSU_rRNA_bacteria       2       0
-NC_058740.1     LSU_rRNA_bacteria       2       0
-NC_058740.1     SSU_rRNA_bacteria       2       0
-NC_077489.1     LSU_rRNA_bacteria       2       0
-NC_077489.1     SSU_rRNA_bacteria       2       0
-NC_086579.1     LSU_rRNA_bacteria       2       0
-NC_086579.1     SSU_rRNA_bacteria       2       0
-
-$ awk '$9 == "Asarum"' ../plastome_metadata.with_taxonomy.tsv | cut -f1 | grep -f - ../misc_data/genome_len.tsv 
-NC_037190.1     193356
-NC_058739.1     193163
-NC_058740.1     193105
-NC_077489.1     192892
-NC_086579.1     190179
-NC_037503.1     15553
-```
-
-</details>
-<br/>
-
-Good idea to check if genomes within the same family have consistent genome sizes. Plot the genome length distribution
-by family, skipping families with less than 2 genomes and genome length range less than 10,000 bp.
-
-```bash
-python3 scripts/plot_len_by_taxon.py plastome_metadata.with_taxonomy.tsv -o figures/len_dist_by_taxon.png --box-width 0.3 --xtick-length 6.0
-```
-
-![genome length distribution by family](embryophyta_cp/figures/len_dist_by_taxon.png)
 
 ## Population Populus PanMAT
 
@@ -5935,5 +5752,1310 @@ done
 
 It seems like Zihao might have wanted the read counts to be split between tied genomes. I will implement this and rerun
 the samples... Actually, I can just use the output file to compute it.. Added in the code blocks above.
+
+Seems like Zihao liked it. Waiting on him to send me more data to run.
+
+
+## Land plant-wide chloroplast PanMAN
+
+### 5/29/2026
+
+I just had my committee meeting. It went well. The committee members were happy with my progress. They warn me that
+modern sequencing capability allows us to fairly easily and cheaply assemble genomes to discover TEs and curate
+reference pangenome pangenomes could also be used by mapping reads directly to the pangenome to identify TE copies.
+
+**They recommended me to fully consider building a land plant-wide chloroplast PanMAN**
+
+Searching all the complete land plant chloroplast genomes in RefSeq. In NCBI (nucleotide), search use this query:
+
+```text
+Embryophyta[ORGN] AND chloroplast[filter] AND ("complete genome"[Title] OR "complete plastid genome"[Title] OR "complete chloroplast genome"[Title]) AND refseq[filter] 
+```
+
+There are 12449 results as of 11:36 AM on 5/29/2026.
+
+Get the list of accession numbers and metadata.
+
+```bash
+# Get accession numbers, taxids, names, etc.
+esearch -db nuccore -query 'Embryophyta[ORGN] AND chloroplast[filter] AND ("complete genome"[Title] OR "complete plastid genome"[Title] OR "complete chloroplast genome"[Title]) AND refseq[filter]' \
+  | esummary \
+  | xtract -pattern DocumentSummary \
+      -element AccessionVersion,TaxId,Organism,Slen,CreateDate,UpdateDate,Title \
+  > plastome_metadata.tsv
+
+# Get taxonomy
+cut -f2 plastome_metadata.tsv | sort -u > taxids.txt
+
+epost -db taxonomy -input taxids.txt \
+  | efetch -format xml \
+  | xtract -pattern Taxon -tab "\t" \
+      -KING "(-)" -PHYL "(-)" -CLSS "(-)" -ORDR "(-)" -FMLY "(-)" -GNUS "(-)" \
+      -block "*/Taxon" \
+        -if Rank -equals "kingdom" -KING ScientificName \
+        -if Rank -equals "phylum"  -PHYL ScientificName \
+        -if Rank -equals "class"   -CLSS ScientificName \
+        -if Rank -equals "order"   -ORDR ScientificName \
+        -if Rank -equals "family"  -FMLY ScientificName \
+        -if Rank -equals "genus"   -GNUS ScientificName \
+      -group Taxon \
+        -element TaxId,ScientificName,"&KING","&PHYL","&CLSS","&ORDR","&FMLY","&GNUS" \
+  > taxonomy.tsv
+
+python3 merge_meta.py plastome_metadata.tsv taxonomy.tsv > plastome_metadata_with_taxonomy.tsv
+```
+
+Special cases are handled as follows:
+
+| Scientific name type | Example | Parsing strategy |
+| --------------------- | ------- | ----------- |
+| Genus hybrid cultivar | Aeonium hybrid cultivar | set species name to `sp.` and hybrid type to `hybrid_cultivar` |
+| \[Genus\] species ... | \[Polygonum\] chinense var. procumbens | set genus to `Genus` without the square brackets |
+| aff. samples | Euphorbia aff. neococcinea Luke s.n. | set species name to `sp.`|
+| cf. samples | Urera cf. cordifolia Ur15 | set species name to `sp.`|
+| subsp. samples | Brassica rapa subsp. rapa | set subspecies name |
+| var. samples | Capsicum baccatum var. pendulum | set varietas name |
+| sp. samples | Tetrastigma sp. Wen 12461 | set species name to `sp.` and uniden_id to identifiers after `sp.`, e.g. `Wen 12461` |
+
+We have chloroplast genomes from a total of 16 classes.
+
+```console
+$ cut -f 6 plastome_metadata_with_taxonomy.tsv | sort -u
+Andreaeopsida
+Anthocerotopsida
+Bryopsida
+Cycadopsida
+Gnetopsida
+Haplomitriopsida
+Jungermanniopsida
+Leiosporocerotopsida
+Lycopodiopsida
+Magnoliopsida
+Marchantiopsida
+Pinopsida
+Polypodiopsida
+Polytrichopsida
+Sphagnopsida
+Tetraphidopsida
+```
+
+Seems like we are missing:
+
+- Ginkgoopsida (Ginkos): the missing gymnosperm class
+  - **Found many complete Ginko chloroplast genomes but none are in refseq, using `AB684440.1`**
+- Andreaeobryopsida and Oedipodiopsida (two moss classes): very tiny classes with very few species
+  - **Andreaeobryopsida has a single species: Andreaeobryum *macrosporum*. No complete chloroplast genome is available.**
+  - **Oedipodiopsida has a single species: Oedipodium *griffithianum*. Using `OZ374950.1`.**
+- Takakiopsida (two species in genus Takakia): enigmatic moss lineage.
+  - Two species in Akakipsida: Takakia *ceratophylla* and Takakia *lepidozioides*
+  - **Found complete chloroplast genomes for *lepidozioides*: `AP014702.1`**
+
+### 6/1/2026
+
+I just filled in some assemblies from missing classes. All the ones added are not in RefSeq but are complete chloroplast 
+genomes.
+
+```bash
+cat plastome_metadata.tsv addons/*/*meta.tsv  > plastome_metadata.with_addon.tsv
+cat taxonomy.tsv addons/*/*taxonomy.tsv  > taxonomy.with_addon.tsv
+python3 merge_meta.py plastome_metadata.with_addon.tsv taxonomy.with_addon.tsv > plastome_metadata_with_taxonomy.tsv
+```
+
+Now download all the assemblies. Just gonna download the entire refseq plastid archive then add the missing assemblies.
+
+```bash
+for i in 1 2 3; do
+  wget https://ftp.ncbi.nlm.nih.gov/refseq/release/plastid/plastid.${i}.1.genomic.fna.gz
+done
+
+for file in *genomic.fna.gz; do
+  cut -f1 plastome_metadata.with_addon.tsv | seqkit grep -f - $file >> plastomes.fa
+done
+
+cat addons/*/*fa >> plastomes.fa 
+rm *genomic.fna.gz
+```
+
+Looks like we got everything.
+
+```console
+$ seqkit stats plastomes.fa
+file          format  type  num_seqs        sum_len  min_len    avg_len  max_len
+plastomes.fa  FASTA   DNA     12,452  1,910,342,521   15,553  153,416.5  345,184
+
+$ wc -l plastome_metadata.with_addon.tsv
+12452 plastome_metadata.with_addon.tsv
+```
+
+Plot genome length distribution.
+
+```bash
+python3 scripts/plot_genome_len_dist.py misc_data/genome_len.tsv 
+```
+
+![genome length distribution](embryophyta_cp/figures/genome_length_distribution.png)
+
+345,184 is very long for a chloroplast genome. And it belongs to `NC_066227.1`.
+
+```console
+$ seqkit fx2tab plastomes.fa -nl | awk '{print $1,$NF}' |  sort -k2,2 -gr | head -n 5
+NC_066227.1 345184
+NC_031206.1 242575
+NC_084419.1 234657
+NC_088443.1 232302
+NC_056348.1 232020
+```
+
+According to this [paper](https://www.biorxiv.org/content/10.1101/2025.10.06.680833v3), it's misassembled. The two other
+assemblies on [NCBI](https://www.ncbi.nlm.nih.gov/nuccore/?term=Magnolia+patungensis%5BORGN%5D+AND+chloroplast%5Bfilter%5D+AND+(%22complete+genome%22%5BTitle%5D+OR+%22complete+plastid+genome%22%5BTitle%5D+OR+%22complete+chloroplast+genome%22%5BTitle%5D)) that are in RefSeq have 160,120 bp and 160,139 bp.
+
+**Perhaps, I need to do some more qc.**
+
+Nonetheless, I'm gonna self-align the chloroplast genomes using nucmer to identify the quadripartite regions.
+
+```bash
+parallel -j 64 'prefix=$(basename {1} .fa); bash ~/tools/misc/mummer_align_self_cpg.sh {1} {1} regions/${prefix}/${prefix}' ::: fastas/*.fa
+```
+
+I will also get all the Embryophyta chloroplast genomes from NCBI without the refseq filter to check for weird refseq
+genomes. Follow commands from 5/29/2026 without the `refseq[filter]`.
+
+### 6/4/2026
+
+I'm gonna follow this [paper](https://www.biorxiv.org/content/10.1101/2025.10.06.680833v3) to do some quality control.
+
+First let's take a look at the 16S rRNA and 23s rRNA genes, or RF00177 (bacterial SSU/16S rRNA) and RF02541 (bacterial
+LSU/23S rRNA)
+
+```bash
+wdir=/scratch1/alan/lab_notebook/embryophyta_cp/rrnas; mkdir -p $wdir; cd $wdir
+
+mkdir rfam_models
+wget https://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/fasta_files/RF00177.fa.gz -O rfam_models/RF00177.fa.gz
+wget https://rfam.org/family/RF00177/cm -O rfam_models/RF00177.cm
+wget https://rfam.org/family/RF02541/cm -O rfam_models/RF02541.cm
+
+cat rfam_models/*cm > rfam_models/plastid_rrna.cm
+cmpress rfam_models/plastid_rrna.cm
+
+mkdir rrna_hits
+parallel -j 64 '
+  chunk={1};
+  base=$(basename $chunk .fa);
+  cmsearch \
+    --rfam \
+    --cpu 1 \
+    -E 0.001 \
+    --tblout rrna_hits/${base}.tbl \
+    --noali \
+    rfam_models/plastid_rrna.cm \
+    $chunk > rrna_hits/${base}.out
+' ::: ../fastas/*.fa
+```
+
+Consolidate the results and create a summary.
+
+```bash
+head -n2 rrna_hits/AB684440.1.tbl > rrna_hits_all.tbl
+for f in rrna_hits/*.tbl; do
+  grep -v '^#' $f >> rrna_hits_all.tbl
+done
+
+awk '!/^#/ {print $1"\t"$3"\t"$16}' rrna_hits_all.tbl \
+  | sort -k1,1 -k2,2 \
+  | awk '
+      {
+        key=$1"\t"$2;
+        count[key]++;
+        if (best[key]=="" || $3+0 < best[key]+0) best[key]=$3;
+      }
+      END {
+        for (k in count) print k"\t"count[k]"\t"best[k];
+      }' \
+  | sort -k1,1 -k2,2 > rrna_per_genome.tsv
+
+cut -f1 ../plastome_metadata.tsv | sort -u > all_accessions.txt
+
+awk '$2=="SSU_rRNA_bacteria"' rrna_per_genome.tsv | cut -f1 | sort -u > has_16s.txt
+awk '$2=="LSU_rRNA_bacteria"' rrna_per_genome.tsv | cut -f1 | sort -u > has_23s.txt
+
+comm -23 all_accessions.txt has_16s.txt > missing_16s.txt
+comm -23 all_accessions.txt has_23s.txt > missing_23s.txt
+```
+
+Only one genome is missing the 16S and 23S rRNA genes. `NC_037503.1` is *Asarum minus* in the Asaraceae family. There
+are 5 other Asarum species in our dataset, all of which have the 16S and 23S rRNA genes. `NC_037503.1` is also
+significantly shorter than the other Asarum species (~15 kb vs ~190 kb), an obvious sign of misassembly/miss-annotation.
+
+<details>
+
+<summary>See details</summary>
+
+```console
+$ tail -n+1 missing_*
+==> missing_16s.txt <==
+NC_037503.1
+
+==> missing_23s.txt <==
+NC_037503.1
+
+$ awk '$9 == "Asarum"' ../plastome_metadata.with_taxonomy.tsv 
+NC_086579.1     3113364 190179  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum chungbuensis     None    Asarum  chungbuensis    None    None    None    None    None    None    None    None    Asarum chungbuensis chloroplast, complete genome
+NC_077489.1     447319  192892  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum splendens        None    Asarum  splendens       None    None    None    None    None    None    None    None    Asarum splendens chloroplast, complete genome
+NC_058740.1     366670  193105  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum sieboldii f. maculatum   None    Asarum  sieboldii       None    None    None    None    None    None    None    None    Asarum maculatum voucher NIBRVP0000640516, 2006.4.1. chloroplast, complete genome
+NC_058739.1     366669  193163  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum misandrum        None    Asarum  misandrum       None    None    None    None    None    None    None    None    Asarum misandrum voucher NIBRVP0000640514, 2007.4.1. chloroplast, complete genome
+NC_037503.1     76132   15553   Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum minus    None    Asarum  minus   None    None    None    None    None    None    None    None    Asarum minus chloroplast, complete genome
+NC_037190.1     76098   193356  Viridiplantae   Streptophyta    Magnoliopsida   Piperales       Asaraceae       Asarum  Asarum sieboldii        None    Asarum  sieboldii       None    None    None    None    None    None    None    None    Asarum sieboldii voucher NIBR-VP0000640510 chloroplast, complete genome
+
+$ awk '$9 == "Asarum"' ../plastome_metadata.with_taxonomy.tsv | cut -f1 | grep -f - rrna_per_genome.tsv
+NC_037190.1     LSU_rRNA_bacteria       2       0
+NC_037190.1     SSU_rRNA_bacteria       2       0
+NC_058739.1     LSU_rRNA_bacteria       2       0
+NC_058739.1     SSU_rRNA_bacteria       2       0
+NC_058740.1     LSU_rRNA_bacteria       2       0
+NC_058740.1     SSU_rRNA_bacteria       2       0
+NC_077489.1     LSU_rRNA_bacteria       2       0
+NC_077489.1     SSU_rRNA_bacteria       2       0
+NC_086579.1     LSU_rRNA_bacteria       2       0
+NC_086579.1     SSU_rRNA_bacteria       2       0
+
+$ awk '$9 == "Asarum"' ../plastome_metadata.with_taxonomy.tsv | cut -f1 | grep -f - ../misc_data/genome_len.tsv 
+NC_037190.1     193356
+NC_058739.1     193163
+NC_058740.1     193105
+NC_077489.1     192892
+NC_086579.1     190179
+NC_037503.1     15553
+```
+
+</details>
+<br/>
+
+### 6/5/2026
+
+Good idea to check if genomes within the same family have consistent genome sizes. Plot the genome length distribution
+by family, skipping families with less than 2 genomes and genome length range less than 10,000 bp.
+
+```bash
+python3 scripts/plot_len_by_taxon.py plastome_metadata.with_taxonomy.tsv -o figures/len_dist_by_taxon.png --box-width 0.3 --xtick-length 6.0
+```
+
+![genome length distribution by family](embryophyta_cp/figures/len_dist_by_taxon.png)
+
+Seems like other than the ones I metioned earlier (NC_066227.1 and NC_037503.1), genomes lengths in the same family are
+fairly consistent and the really short ones are either myco-heterotrophs or parasitic plants that have substantially
+reduced chloroplast genomes.
+
+Replace `NC_066227.1` with `MZ675531.2` and remove `NC_037503.1` from the dataset.
+
+<details>
+
+<summary>See details</summary>
+
+```bash
+wdir=/scratch1/alan/lab_notebook/embryophyta_cp/addons/MZ675531.2; mkdir -p $wdir; cd $wdir
+
+# Get metadata for MZ675531.2
+accession=MZ675531.2
+esearch -db nuccore -query "'${accession}'" \
+  | esummary \
+  | xtract -pattern DocumentSummary \
+      -element AccessionVersion,TaxId,Organism,Slen,CreateDate,UpdateDate,Title \
+  > ${accession}.plastome_metadata.tsv
+
+# Get taxonomy
+cut -f2 ${accession}.plastome_metadata.tsv | sort -u > ${accession}.taxids.txt
+
+epost -db taxonomy -input ${accession}.taxids.txt \
+  | efetch -format xml \
+  | xtract -pattern Taxon -tab "\t" \
+      -KING "(-)" -PHYL "(-)" -CLSS "(-)" -ORDR "(-)" -FMLY "(-)" -GNUS "(-)" \
+      -block "*/Taxon" \
+        -if Rank -equals "kingdom" -KING ScientificName \
+        -if Rank -equals "phylum"  -PHYL ScientificName \
+        -if Rank -equals "class"   -CLSS ScientificName \
+        -if Rank -equals "order"   -ORDR ScientificName \
+        -if Rank -equals "family"  -FMLY ScientificName \
+        -if Rank -equals "genus"   -GNUS ScientificName \
+      -group Taxon \
+        -element TaxId,ScientificName,"&KING","&PHYL","&CLSS","&ORDR","&FMLY","&GNUS" \
+  > ${accession}.taxonomy.tsv
+
+python3 ../../scripts/merge_meta.py ${accession}.plastome_metadata.tsv ${accession}.taxonomy.tsv > ${accession}.plastome_metadata_with_taxonomy.tsv
+
+efetch -db nuccore -id MZ675531.2 -format fasta > MZ675531.fasta
+
+wdir=/scratch1/alan/lab_notebook/embryophyta_cp; cd $wdir
+
+# Add MZ675531.2 to the dataset
+cat /scratch1/alan/lab_notebook/embryophyta_cp/addons/MZ675531.2/MZ675531.2.plastome_metadata.tsv >> plastome_metadata.tsv
+cat /scratch1/alan/lab_notebook/embryophyta_cp/addons/MZ675531.2/MZ675531.2.plastome_metadata_with_taxonomy.tsv >> plastome_metadata.with_taxonomy.tsv
+cat /scratch1/alan/lab_notebook/embryophyta_cp/addons/MZ675531.2/MZ675531.fasta >> plastomes.fa
+cmsearch --rfam --cpu 1 -E 0.001 --tblout rrnas/rrna_hits/MZ675531.2.tbl --noali rrnas/rfam_models/plastid_rrna.cm /scratch1/alan/lab_notebook/embryophyta_cp/addons/MZ675531.2/MZ675531.fasta > rrnas/rrna_hits/MZ675531.2.out
+
+# Remove NC_066227.1 and NC_037503.1 from the dataset 
+sed -i '/NC_066227.1/d' plastome_metadata.tsv
+sed -i '/NC_066227.1/d' plastome_metadata.with_taxonomy.tsv
+sed -i '/NC_037503.1/d' plastome_metadata.tsv
+sed -i '/NC_037503.1/d' plastome_metadata.with_taxonomy.tsv
+
+echo -e 'NC_066227.1\nNC_037503.1' | seqkit grep -v -f - plastomes.fa > tmp.tmp && mv tmp.tmp plastomes.fa
+
+# resplit the fastas
+rm fastas/*fa
+seqkit split -i --by-id-prefix '' -O fastas plastomes.fa
+```
+
+</details>
+<br/>
+
+Now let's build a tree using the 16s rRNA and 23s rRNA genes.
+
+First extract the 16s rRNA and 23s rRNA genes from the fastas. If two copies found, keep the first one seen.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/embryophyta_cp/rrnas; cd $wdir
+mkdir fastas
+
+for file in ../fastas/*fa; do
+  prefix=$(basename $file .fa)
+
+  awk '!/^#/ {
+    len = ($9 > $8) ? $9 - $8 + 1 : $8 - $9 + 1;
+    printf "%d\t%s\n", len, $0
+  }' rrna_hits/${prefix}.tbl \
+    | sort -s -k2,2 -k4,4 -k1,1nr \
+    | awk '!seen[$2"\t"$4]++' \
+    | cut -f2- \
+    > rrna_hits/${prefix}.best_hits.tbl
+
+  awk 'BEGIN{OFS="\t"} {
+    if ($10 == "+") { s = $8 - 1; e = $9 }
+    else            { s = $9 - 1; e = $8 }
+    gene = ($3 == "SSU_rRNA_bacteria") ? "rrn16" : "rrn23";
+    print $1, s, e, $1"|"gene, $15, $10
+  }' rrna_hits/${prefix}.best_hits.tbl > rrna_hits/${prefix}.best.bed
+
+  # samtools faidx ../fastas/${prefix}.fa
+  bedtools getfasta \
+    -fi ../fastas/${prefix}.fa \
+    -bed rrna_hits/${prefix}.best.bed \
+    -s \
+    -nameOnly \
+    > fastas/${prefix}.fa
+done
+
+seqkit grep -r -p '\|rrn16.*' fastas/* > rrna16.fa &
+seqkit grep -r -p '\|rrn23.*' fastas/* > rrna23.fa &
+```
+
+I got some truncated rRNA genes because of the rotation of the plasmid that splits the gene into two parts, one at the
+5' end and the other at the 3' end of the entire fasta. Gonna extend the ends of the fastas by 5000 bp.
+
+```bash
+for file in $(find ../fastas -name '*.fa' ! -name '*.extended.fa'); do 
+  awk -v overlap=5000 '
+    /^>/ {
+      if (name) print name"\n"seq substr(seq, 1, overlap);
+      name = $0; seq = ""; next
+    }
+    { seq = seq $0 }
+    END { if (name) print name"\n"seq substr(seq, 1, overlap) }
+  ' $file > ${file%.fa}.extended.fa
+done
+```
+
+Then rerun the rRNA extraction with the extended fastas.
+
+### 6/8/2026
+
+Seems like `NC_084254.1` is the only weird one with a truncated 23s rRNA gene. I also checked other assemblies with 
+short 23s rRNA genes: `NC_036502.1`,  `NC_036500.1`, `NC_058591.1`, and `NC_004543.1`. Their alignments look good and 
+actually span the entire hmm model.
+
+
+```console
+$ cat rrna_hits/NC_084254.1.tbl 
+#target name         accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
+#------------------- --------- -------------------- --------- --- -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
+NC_084254.1          -         SSU_rRNA_bacteria    RF00177    cm        1     1533    81368    82857      +    no    1 0.57  25.7 1542.0         0 !   Tamarix androssowii chloroplast, complete genome
+NC_084254.1          -         SSU_rRNA_bacteria    RF00177    cm        1     1533   111744   110255      -    no    1 0.57  25.7 1542.0         0 !   Tamarix androssowii chloroplast, complete genome
+NC_084254.1          -         LSU_rRNA_bacteria    RF02541    cm       16      564    85294    85814      +    no    1 0.53   6.4  432.8    5e-142 !   Tamarix androssowii chloroplast, complete genome
+NC_084254.1          -         LSU_rRNA_bacteria    RF02541    cm       16      564   107818   107298      -    no    1 0.53   6.4  432.8    5e-142 !   Tamarix androssowii chloroplast, complete genome
+NC_084254.1          -         LSU_rRNA_bacteria    RF02541    cm      629      852    85880    86101      +    no    1 0.53   0.0  194.7   3.4e-63 !   Tamarix androssowii chloroplast, complete genome
+NC_084254.1          -         LSU_rRNA_bacteria    RF02541    cm      629      852   107232   107011      -    no    1 0.53   0.0  194.7   3.4e-63 !   Tamarix androssowii chloroplast, complete genome
+NC_084254.1          -         LSU_rRNA_bacteria    RF02541    cm      857     1234    86106    86462      +    no    1 0.55   0.2  117.5   1.3e-37 !   Tamarix androssowii chloroplast, complete genome
+NC_084254.1          -         LSU_rRNA_bacteria    RF02541    cm      857     1234   107006   106650      -    no    1 0.55   0.2  117.5   1.3e-37 !   Tamarix androssowii chloroplast, complete genome
+```
+
+<details>
+<summary>See more details</summary>
+
+```console
+$ seqkit stats rrna23.fa rrna16.fa 
+file       format  type  num_seqs     sum_len  min_len  avg_len  max_len
+rrna23.fa  FASTA   DNA     12,451  37,606,258      521  3,020.3    3,493
+rrna16.fa  FASTA   DNA     12,451  18,563,772    1,396  1,490.9    1,759
+
+$ paste -d '\t'  <(seqkit fx2tab -nl rrna23.fa  | sort -k2,2 -g | head) <(seqkit fx2tab -nl rrna16.fa  | sort -k2,2 -g | head) | column -t
+NC_084254.1|rrn23(+)  521   NC_039677.1|rrn16(+)  1396
+NC_036502.1|rrn23(+)  1467  NC_087925.1|rrn16(+)  1422
+NC_036500.1|rrn23(+)  1654  NC_046013.1|rrn16(+)  1466
+NC_058591.1|rrn23(-)  2308  NC_080971.1|rrn16(+)  1470
+NC_004543.1|rrn23(+)  2700  NC_037425.1|rrn16(+)  1473
+NC_049001.1|rrn23(+)  2700  NC_016734.1|rrn16(+)  1475
+NC_049002.1|rrn23(+)  2700  NC_023238.1|rrn16(+)  1476
+NC_067753.1|rrn23(+)  2829  NC_035334.1|rrn16(+)  1477
+NC_047438.1|rrn23(+)  2845  NC_038079.1|rrn16(+)  1477
+NC_016734.1|rrn23(+)  2894  NC_060685.1|rrn16(+)  1477
+```
+
+</details>
+<br/>
+
+`NC_084254.1`'s annotation on NCBI also doesn't have the 23 rRNA gene and it also has a much shorter genome length
+than other assemblies in the same genus. It's actually an incomplete assembly according to this
+[paper](https://pubmed.ncbi.nlm.nih.gov/39360124/). For some reason it got labeled as complete genome on RefSeq. Will
+remove it from the dataset.
+
+```console
+$ grep Tamarix plastome_metadata.tsv | sort -k5,5 -g  | cut -f 2 --complement | column -t -s$'\t'
+NC_084254.1  Tamarix androssowii      128528  2023/12/07  2023/12/07  Tamarix androssowii chloroplast, complete genome
+NC_084252.1  Tamarix aphylla          156079  2023/12/07  2023/12/07  Tamarix aphylla chloroplast, complete genome
+NC_084253.1  Tamarix gracilis         156144  2023/12/07  2023/12/07  Tamarix gracilis chloroplast, complete genome
+NC_066442.1  Tamarix laxa             156163  2022/09/22  2023/04/13  Tamarix laxa chloroplast, complete genome
+NC_067942.1  Tamarix ramosissima      156172  2022/11/12  2023/04/03  Tamarix ramosissima chloroplast, complete genome
+NC_066443.1  Tamarix karelinii        156176  2022/09/22  2023/04/13  Tamarix karelinii chloroplast, complete genome
+NC_054218.1  Tamarix taklamakanensis  156177  2021/04/15  2023/04/03  Tamarix taklamakanensis chloroplast, complete genome
+NC_088076.1  Tamarix hispida          156177  2024/04/10  2024/04/10  Tamarix hispida isolate GMbc chloroplast, complete genome
+NC_067397.1  Tamarix arceuthoides     156198  2022/11/12  2023/04/03  Tamarix arceuthoides chloroplast, complete genome
+```
+
+Now align using mafft on Phoenix. Then trim the alignment using trimAl and concatenate the regions.
+
+```bash
+trimal -in rrna16.aln -out rrna16.trimmed.aln -automated1 &
+trimal -in rrna23.aln -out rrna23.trimmed.aln -automated1 &
+wait
+
+python3 /scratch1/alan/lab_notebook/panmama/salicaceae/data/salicaceae/salicaceae_regions/concat_aln_regions.py \
+  -i rrna16.trimmed.aln rrna23.trimmed.aln \
+  -o rrna.concat.fasta \
+  -p rrna.concat.partition.txt
+```
+
+### 6/16/2026
+
+I should probably filter out the sequences that match to bacterial rrna genes first.
+
+```bash
+mkdir -p silva138_2 && cd silva138_2
+
+wget https://www.arb-silva.de/fileadmin/silva_databases/release_138.2/Exports/SILVA_138.2_SSURef_NR99_tax_silva.fasta.gz
+wget https://www.arb-silva.de/fileadmin/silva_databases/release_138.2/Exports/SILVA_138.2_LSURef_NR99_tax_silva.fasta.gz
+
+gunzip *.fasta.gz
+
+for f in SILVA_138.2_SSURef_NR99_tax_silva.fasta SILVA_138.2_LSURef_NR99_tax_silva.fasta; do
+  seqkit seq --rna2dna $f > ${f%.fasta}.dna.fasta
+done
+
+makeblastdb -in SILVA_138.2_SSURef_NR99_tax_silva.dna.fasta \
+  -dbtype nucl -parse_seqids -title silva_ssu_nr99 -out silva_ssu_nr99
+
+makeblastdb -in SILVA_138.2_LSURef_NR99_tax_silva.dna.fasta \
+  -dbtype nucl -parse_seqids -title silva_lsu_nr99 -out silva_lsu_nr99
+```
+
+Now run megablast
+
+```bash
+blastn -task megablast \
+  -query rrna16.fa \
+  -db silva138_2/silva_ssu_nr99 \
+  -evalue 1e-5 \
+  -max_target_seqs 50 \
+  -outfmt "6 qseqid sseqid pident length evalue bitscore stitle" \
+  -num_threads 32 \
+  > rrna16_vs_silva.tsv
+
+blastn -task megablast \
+  -query rrna23.fa \
+  -db silva138_2/silva_lsu_nr99 \
+  -evalue 1e-5 \
+  -max_target_seqs 50 \
+  -outfmt "6 qseqid sseqid pident length evalue bitscore stitle" \
+  -num_threads 32 \
+  > rrna23_vs_silva.tsv
+```
+
+Then filter out the top 5 sequences and non-plastid top hits.
+
+```bash
+sort -k1,1 -k6,6gr rrna16_vs_silva.tsv \
+  | awk '{ c[$1]++; if (c[$1] <= 5) print }' \
+  > rrna16_top5.tsv
+
+sort -k1,1 -k6,6gr rrna23_vs_silva.tsv \
+  | awk '{ c[$1]++; if (c[$1] <= 5) print }' \
+  > rrna23_top5.tsv
+
+for rrna in rrna16 rrna23; do
+  awk -F'\t' '
+    { is_plastid = ($7 ~ /[Cc]hloroplast|[Pp]lastid/) ? 1 : 0;
+      total[$1]++;
+      plastid[$1] += is_plastid;
+    }
+    END {
+      for (q in total)
+        if (plastid[q] / total[q] < 4/5)
+          print q"\t"plastid[q]"/"total[q];
+    }' ${rrna}_top5.tsv > ${rrna}_suspect.tsv
+done
+```
+
+We got some suspect sequences. Let's take a look.
+
+```console
+$ tail -n+1 rrna16_suspect.tsv  rrna23_suspect.tsv
+==> rrna16_suspect.tsv <==
+NC_035876.1|rrn16(+)    0/5
+NC_080523.1|rrn16(+)    0/5
+NC_039761.1|rrn16(+)    0/5
+NC_044118.1|rrn16(+)    0/5
+
+==> rrna23_suspect.tsv <==
+NC_068042.1|rrn23(+)    3/5
+NC_077630.1|rrn23(+)    3/5
+NC_068038.1|rrn23(+)    3/5
+NC_068041.1|rrn23(+)    3/5
+NC_068030.1|rrn23(+)    3/5
+NC_068040.1|rrn23(+)    3/5
+NC_044118.1|rrn23(+)    0/5
+NC_068036.1|rrn23(+)    3/5
+NC_068035.1|rrn23(+)    3/5
+NC_030212.1|rrn23(+)    3/5
+NC_036494.1|rrn23(+)    3/5
+NC_083195.1|rrn23(+)    0/5
+NC_068034.1|rrn23(+)    3/5
+NC_077629.1|rrn23(+)    3/5
+NC_068033.1|rrn23(+)    3/5
+NC_077628.1|rrn23(+)    3/5
+NC_068029.1|rrn23(+)    3/5
+NC_068032.1|rrn23(+)    3/5
+NC_068039.1|rrn23(+)    3/5
+```
+
+All of the assemblies with 3/5 top hits on plastid genomes (2/5 are elsewhere) are from the Lamiales order. All of them
+also cluster with their respective genus in the tree, so they look good. Will focus on the 0/5 top hit ones.
+
+All 0/5 top hit ones have very long branches in their subtrees, so they are probably not plastid 16s or 23s genes. Will
+remove them from the dataset.
+
+```console
+$ awk '$2 == "0/5"' *suspect.tsv | cut -f1 -d '|' | sort -u
+NC_035876.1
+NC_039761.1
+NC_044118.1
+NC_080523.1
+NC_083195.1
+```
+
+```bash
+for sample in $(awk '$2 == "0/5"' rrnas/*suspect.tsv | cut -f1 -d '|' | sort -u); do
+  sed -i "/${sample}/d" plastome_metadata.tsv
+  sed -i "/${sample}/d" plastome_metadata.with_taxonomy.tsv
+done
+```
+
+And now add some *Zygnematophyceae* plastid genomes as the outgroup. Extract their rrna sequences and confirm that they
+have both the 16s and 23s genes and have mostly plastid hits when BLASTing against the Silva database.
+
+Confirmed that the 12 *Zygnematophyceae* plastid genomes contain at least one 16s and one 23s gene and that their top 5
+BLAST hits against the Silva database are all plastid hits.
+
+<details>
+<summary>Extract and process *Zygnematophyceae* plastid genomes</summary>
+
+```bash
+esearch -db nuccore -query 'Zygnematophyceae[ORGN] AND chloroplast[filter] AND ("complete genome"[Title] OR "complete plastid genome"[Title] OR "complete chloroplast genome"[Title]) AND refseq[filter]' \
+  | esummary \
+  | xtract -pattern DocumentSummary \
+      -element AccessionVersion,TaxId,Organism,Slen,CreateDate,UpdateDate,Title \
+  > zygnematophyceae.plastomes.tsv
+
+cut -f2 zygnematophyceae.plastomes.tsv | sort -u > zygnematophyceae.taxids.txt
+
+epost -db taxonomy -input zygnematophyceae.taxids.txt \
+  | efetch -format xml \
+  | xtract -pattern Taxon -tab "\t" \
+      -KING "(-)" -PHYL "(-)" -CLSS "(-)" -ORDR "(-)" -FMLY "(-)" -GNUS "(-)" \
+      -block "*/Taxon" \
+        -if Rank -equals "kingdom" -KING ScientificName \
+        -if Rank -equals "phylum"  -PHYL ScientificName \
+        -if Rank -equals "class"   -CLSS ScientificName \
+        -if Rank -equals "order"   -ORDR ScientificName \
+        -if Rank -equals "family"  -FMLY ScientificName \
+        -if Rank -equals "genus"   -GNUS ScientificName \
+      -group Taxon \
+        -element TaxId,ScientificName,"&KING","&PHYL","&CLSS","&ORDR","&FMLY","&GNUS" \
+  > zygnematophyceae.taxonomy.tsv
+
+python3 ../scripts/merge_meta.py zygnematophyceae.plastomes.tsv zygnematophyceae.taxonomy.tsv > zygnematophyceae_metadata_with_taxonomy.tsv
+
+for file in ../archive/*genomic.fna.gz; do
+  cut -f1 zygnematophyceae_metadata_with_taxonomy.tsv | seqkit grep -f - $file >> zygnematophyceae.plastomes.fa
+done
+
+seqkit split -i --by-id-prefix '' -O zygnematophyceae_fastas zygnematophyceae.plastomes.fa
+for file in $(find zygnematophyceae_fastas -name '*.fa' ! -name '*.extended.fa'); do 
+  awk -v overlap=5000 '
+    /^>/ {
+      if (name) print name"\n"seq substr(seq, 1, overlap);
+      name = $0; seq = ""; next
+    }
+    { seq = seq $0 }
+    END { if (name) print name"\n"seq substr(seq, 1, overlap) }
+  ' $file > ${file%.fa}.extended.fa
+done
+
+parallel -j 8 '
+  chunk={1};
+  base=$(basename $chunk .fa);
+  cmsearch \
+    --rfam \
+    --cpu 1 \
+    -E 0.001 \
+    --tblout zygnematophyceae_rrna_hits/${base}.tbl \
+    --noali \
+    rfam_models/plastid_rrna.cm \
+    $chunk > zygnematophyceae_rrna_hits/${base}.out
+' ::: zygnematophyceae_fastas/*extended.fa
+
+head -n2 zygnematophyceae_rrna_hits/NC_008116.1.extended.tbl > zygnematophyceae.rrna_hits_all.tbl
+for f in zygnematophyceae_rrna_hits/*.tbl; do
+  grep -v '^#' $f >> zygnematophyceae.rrna_hits_all.tbl
+done
+
+awk '!/^#/ {print $1"\t"$3"\t"$16}' zygnematophyceae.rrna_hits_all.tbl \
+  | sort -k1,1 -k2,2 \
+  | awk '
+      {
+        key=$1"\t"$2;
+        count[key]++;
+        if (best[key]=="" || $3+0 < best[key]+0) best[key]=$3;
+      }
+      END {
+        for (k in count) print k"\t"count[k]"\t"best[k];
+      }' \
+  | sort -k1,1 -k2,2 > zygnematophyceae.rrna_per_genome.tsv
+
+cut -f1 zygnematophyceae_metadata_with_taxonomy.tsv | sort -u > zygnematophyceae.all_accessions.txt
+
+awk '$2=="SSU_rRNA_bacteria"' zygnematophyceae.rrna_per_genome.tsv | cut -f1 | sort -u > zygnematophyceae.has_16s.txt
+awk '$2=="LSU_rRNA_bacteria"' zygnematophyceae.rrna_per_genome.tsv | cut -f1 | sort -u > zygnematophyceae.has_23s.txt
+
+comm -23 zygnematophyceae.all_accessions.txt zygnematophyceae.has_16s.txt > zygnematophyceae.missing_16s.txt
+comm -23 zygnematophyceae.all_accessions.txt zygnematophyceae.has_23s.txt > zygnematophyceae.missing_23s.txt
+
+mkdir zygnematophyceae_rrna_fastas
+for file in zygnematophyceae_fastas/*extended.fa; do
+  prefix=$(basename $file .fa)
+
+  awk '!/^#/ {
+    len = ($9 > $8) ? $9 - $8 + 1 : $8 - $9 + 1;
+    printf "%d\t%s\n", len, $0
+  }' zygnematophyceae_rrna_hits/${prefix}.tbl \
+    | sort -s -k2,2 -k4,4 -k1,1nr \
+    | awk '!seen[$2"\t"$4]++' \
+    | cut -f2- \
+    > zygnematophyceae_rrna_hits/${prefix}.best_hits.tbl
+
+  awk 'BEGIN{OFS="\t"} {
+    if ($10 == "+") { s = $8 - 1; e = $9 }
+    else            { s = $9 - 1; e = $8 }
+    gene = ($3 == "SSU_rRNA_bacteria") ? "rrn16" : "rrn23";
+    print $1, s, e, $1"|"gene, $15, $10
+  }' zygnematophyceae_rrna_hits/${prefix}.best_hits.tbl > zygnematophyceae_rrna_hits/${prefix}.best.bed
+
+  samtools faidx zygnematophyceae_fastas/${prefix}.fa
+  bedtools getfasta \
+    -fi zygnematophyceae_fastas/${prefix}.fa \
+    -bed zygnematophyceae_rrna_hits/${prefix}.best.bed \
+    -s \
+    -nameOnly \
+    > zygnematophyceae_rrna_fastas/${prefix}.fa
+done
+
+seqkit grep -r -p '\|rrn16.*' zygnematophyceae_rrna_fastas/* > zygnematophyceae.rrna16.fa &
+seqkit grep -r -p '\|rrn23.*' zygnematophyceae_rrna_fastas/* > zygnematophyceae.rrna23.fa &
+wait
+
+blastn -task megablast \
+  -query zygnematophyceae.rrna16.fa \
+  -db silva138_2/silva_ssu_nr99 \
+  -evalue 1e-5 \
+  -max_target_seqs 50 \
+  -outfmt "6 qseqid sseqid pident length evalue bitscore stitle" \
+  -num_threads 32 \
+  > zygnematophyceae.rrna16_vs_silva.tsv
+
+blastn -task megablast \
+  -query zygnematophyceae.rrna23.fa \
+  -db silva138_2/silva_lsu_nr99 \
+  -evalue 1e-5 \
+  -max_target_seqs 50 \
+  -outfmt "6 qseqid sseqid pident length evalue bitscore stitle" \
+  -num_threads 32 \
+  > zygnematophyceae.rrna23_vs_silva.tsv
+
+sort -k1,1 -k6,6gr zygnematophyceae.rrna16_vs_silva.tsv \
+  | awk '{ c[$1]++; if (c[$1] <= 5) print }' \
+  > zygnematophyceae.rrna16_top5.tsv
+
+sort -k1,1 -k6,6gr zygnematophyceae.rrna23_vs_silva.tsv \
+  | awk '{ c[$1]++; if (c[$1] <= 5) print }' \
+  > zygnematophyceae.rrna23_top5.tsv
+
+for rrna in rrna16 rrna23; do
+  awk -F'\t' '
+    { is_plastid = ($7 ~ /[Cc]hloroplast|[Pp]lastid/) ? 1 : 0;
+      total[$1]++;
+      plastid[$1] += is_plastid;
+    }
+    END {
+      for (q in total)
+        if (plastid[q] / total[q] < 4/5)
+          print q"\t"plastid[q]"/"total[q];
+    }' zygnematophyceae.${rrna}_top5.tsv > zygnematophyceae.${rrna}_suspect.tsv
+done
+
+# move all zygnematophyceae related files to the zygnematophyceae directory
+mkdir zygnematophyceae
+mv zygnematophyceae* zygnematophyceae/
+```
+
+</details>
+
+<br/>
+
+Merge the *Zygnematophyceae* plastid genomes with the other plastid genomes.
+
+```bash
+cat rrna16.fa zygnematophyceae/zygnematophyceae.rrna16.fa > rrna16.with_outgroup.fa
+cat rrna23.fa zygnematophyceae/zygnematophyceae.rrna23.fa > rrna23.with_outgroup.fa
+cat ../plastome_metadata.with_taxonomy.tsv zygnematophyceae/zygnematophyceae_metadata_with_taxonomy.tsv  > ../plastome_metadata.with_taxonomy.with_outgroup.tsv
+```
+
+Now align the 16s and 23s genes with the outgroup using mafft on Phoenix. Then trim the alignments using trimal and 
+concatenate the alignments. Finally use iqtree to infer the phylogeny.
+
+```bash
+trimal -in rrna16.with_outgroup.aln -out rrna16.with_outgroup.trimmed.aln -automated1 &
+trimal -in rrna23.with_outgroup.aln -out rrna23.with_outgroup.trimmed.aln -automated1 &
+
+sed -i 's/|.*//g' rrna16.with_outgroup.trimmed.aln
+sed -i 's/|.*//g' rrna16.with_outgroup.trimmed.aln
+
+python3 /scratch1/alan/lab_notebook/panmama/salicaceae/data/salicaceae/salicaceae_regions/concat_aln_regions.py \
+  -i rrna16.with_outgroup.trimmed.aln rrna23.with_outgroup.trimmed.aln \
+  -o rrna.with_outgroup.concat.fasta \
+  -p rrna.with_outgroup.concat.partition.txt
+```
+
+## 6/17/2026
+
+While iqtree is running, I will plan on how to determine whether a plastid genome is misclassified.
+
+To assess whether a plastid genome has been taxonomically misclassified, we identify at least two of its closest 
+relatives and compare their assigned taxonomic order to that of the query genome. If its sister clade has two or more 
+members, use all of them for the comparison; if its sister clade has only one member, find the next closest clade and 
+use the sister clade member and all of the members of the next closest clade for the comparison.
+
+A plastid genome is considered **misclassified** if both of the following are true:
+1. The closest relatives identified belong to the same taxonomic order as each other
+2. The query genome is in a different order than its closest relatives
+
+In other words, misclassification is flagged when a genome's phylogenetic neighbors form a coherent taxonomic group that
+excludes the genome itself, despite its close evolutionary relationship to them.
+
+Order was chosen as the comparison rank rather than family because family-level taxonomy is revised more frequently, and
+nuclear–cytoplasmic genome discordance is more pronounced at lower taxonomic ranks. Using order reduces sensitivity to
+both sources of noise.
+
+Obviously, this will only be done for orders that have at least three plastid genomes. Orders with two plastid genomes
+must be each other's closest relatives, and both are flagged as misclassified if not. Orders with only one plastid
+genome will be excluded from this filtering process.
+
+**Maybe I will exclude the non-photosynthetic plastid genomes for now.** I will create a reference panel of
+photosynthetic genes and use them to filter out genomes that significantly lack them.
+
+Get the photosynthetic genes.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/embryophyta_cp/photosynthetic; mkdir -p $wdir; cd $wdir
+
+refs="NC_001319.1 NC_005087.1 NC_004766.1 NC_001879.2 NC_000932.1"
+panel="rbcL psaA psaB psaC psaJ psbA psbB psbC psbD psbE psbF petA petB petD petG atpA atpB atpE atpF atpH atpI"
+
+for acc in $refs; do efetch -db nuccore -id $acc -format fasta_cds_aa; done \
+  | awk -v pat="^($(echo $panel | tr ' ' '|'))$" '
+      /^>/ {
+        keep=0; g=""
+        if (match($0, /\[gene=[^]]+\]/)) g=substr($0, RSTART+6, RLENGTH-7)
+        acc=$0; sub(/^>lcl\|/,"",acc); sub(/_prot_.*/,"",acc)
+        if (g ~ pat) { keep=1; print ">" g "__" acc }
+        next
+      }
+      keep
+    ' > photosynthesis_refs.faa
+seqkit rmdup -n photosynthesis_refs.faa  > tmp.tmp && mv tmp.tmp photosynthesis_refs.faa
+```
+
+Then align the genes to each of the assembly to recover them.
+
+```bash
+mkdir photo_hits
+parallel -j 64 '
+  g={1}; base=$(basename $g .fa)
+  miniprot -t 1 --gff $g photosynthesis_refs.faa > photo_hits/${base}.gff
+' ::: ../fastas/*.fa
+
+for f in photo_hits/*.gff; do
+  base=$(basename $f .gff)
+  awk -F'\t' -v b="$base" '
+    $3=="mRNA" {
+      id=0
+      if (match($9,/Identity=[0-9.]+/)) id=substr($9,RSTART+9,RLENGTH-9)+0
+      if (match($9,/Target=[^ ]+/)) { split(substr($9,RSTART+7,RLENGTH-7),a,"__"); gene=a[1] }
+      if (id>=0.4) seen[gene]=1
+    }
+    END { n=0; for (k in seen) n++; print b"\t"n }' "$f"
+done > photosynthesis_gene_counts.tsv
+```
+
+We have the expected bi-modal distribution of the number of photosynthetic genes recovered, where the vast majority of
+genomes have the complete 21 genes recovered followed by a tail and a small peak at 0 genes recovered.
+
+```console
+$ cut -f2 photosynthesis_gene_counts.tsv | sort -n | uniq -c
+     23 0
+      1 1
+      2 3
+      2 4
+      2 6
+      2 7
+      3 8
+      5 9
+      2 10
+      4 12
+      4 13
+      2 14
+      1 15
+      2 17
+      6 18
+      9 19
+     37 20
+  12338 21
+```
+
+Will remove assemblies with less than 80% of the photosynthetic genes (<=16) recovered.
+
+<details>
+<summary>Remove assemblies with less than 80% of the photosynthetic genes recovered</summary>
+
+```bash
+wdir=/scratch1/alan/lab_notebook/embryophyta_cp; cd $wdir
+
+for sample in $(awk '$2 <= 16' photosynthetic/photosynthesis_gene_counts.tsv  | sort -k2,2 -g | cut -f 1); do
+  sed -i "/${sample}/d" plastome_metadata.tsv
+  sed -i "/${sample}/d" plastome_metadata.with_taxonomy.tsv
+  sed -i "/${sample}/d" plastome_metadata.with_taxonomy.with_outgroup.tsv
+done
+
+awk '$2 <= 16' photosynthetic/photosynthesis_gene_counts.tsv  | sort -k2,2 -g | cut -f 1 | seqkit grep -v -f - plastomes.fa > tmp.tmp
+mv tmp.tmp plastomes.fa
+
+rm fastas/*fa
+seqkit split -i --by-id-prefix '' -O fastas plastomes.fa
+```
+
+</details>
+
+## Modern eDNA project
+
+Rachel and Ryan just sent me their new 12s and 18s database. Gonna take a look at it. Will focus on the 12s database for
+now.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/edna; mkdir -p $wdir; cd $wdir
+
+# generate summary stats on the sequence lengths
+python genus_summary_stats.py marker_databases/12S_MiFish_U_species.fasta marker_databases/12S_MiFish_U_species_taxonomy.txt -o 12S_MiFish_U_genus_stats.tsv
+```
+
+### 6/16/2026 
+
+Gonna BLAST the 12S database against the BLAST core_nt on Phoenix to separate out the target and offtarget inserts.
+
+### 7/10/2026
+
+Gonna get the top 5 blast hits for each of the query sequences and remove the columns that are not needed.
+
+```bash
+awk '$1!=p{p=$1;c=1;print;next} c<5{print;c++}' blast_out/12S_MiFish_U_species.blast.out \
+  | cut --complement -f 10-15,18-20 > blast_out/12S_MiFish_U_species.blast.top5.out
+```
+
+I should split the database into 2 categories with a total of 6 subcategories.
+
+1. SSU hits:
+   - Eukaryotes Vertebrate mito 12S
+   - Eukaryotes non-vertebrate mito 12S
+   - Bacteria 16S
+   - Archeae 16S
+     - keywords: '16s', 'small subunit rrna', 'small subunit ribosomal'
+   - Eukaryotes nuclear 18S
+2. Non-SSU hits:
+   - Non-SSU hits (primarily due to random chance that primers might bind to their flanking sequences)
+
+
+### 7/13/2026
+
+Wrote a python script to parse the BLAST output and get the ratio of BLAST hits that are in each of the categories.
+
+```bash
+python3 scripts/parse_blast.py blast_out/12S_MiFish_U_species.blast.top5.out > top_5.categories.tsv
+
+tail -n+2 top_5.categories.tsv | cut -f1 | seqkit grep -f - marker_databases/12S_MiFish_U_species.fasta  > marker_databases/12S_MiFish_U_species.blast_hit.fasta
+```
+
+```console
+$ head top_5.categories.tsv | column -t
+query                 eu_mtio_12s  bacteria_16s  archaea_16s  eu_nuclear_18s  non_ssu  uncultured_ssu  unknown  total_hits
+seq_e88f9b3f6e80f01b  0.0          1.0           0.0          0.0             0.0      0.0             0.0      5
+seq_82f11beedf371ae1  0.8          0.0           0.0          0.0             0.0      0.0             0.2      5
+seq_4f34d6f60d927307  0.0          1.0           0.0          0.0             0.0      0.0             0.0      5
+seq_8a2b1924627dd77a  0.0          0.0           0.0          0.0             0.0      0.0             1.0      5
+seq_58d9a7294ba1b52a  0.0          0.0           1.0          0.0             0.0      0.0             0.0      5
+seq_a285866da083f108  1.0          0.0           0.0          0.0             0.0      0.0             0.0      5
+seq_e82130beed8c41e4  0.0          1.0           0.0          0.0             0.0      0.0             0.0      5
+seq_e27f0abf93017d38  0.8          0.0           0.0          0.0             0.0      0.0             0.2      5
+seq_152a6059addd17c0  0.0          0.6           0.0          0.0             0.0      0.4             0.0      5
+```
+
+
+### 7/14/2026
+
+Gonna align only the queries with blast hits. Then trim the alignments using trimal.
+
+```bash
+trimal -in 12S_MiFish_U_species.blast_hit.aln -out 12S_MiFish_U_species.blast_hit.trimmed.aln -automated1
+```
+
+### 7/15/2026
+
+The alignment doesn't look so good. I'm going to try to align sequences that are within the same categories first. First
+try `eu_mito_12s`.
+
+```bash
+# somewhat conservative method to keep only sequences with non-0 eu_mito_12s hits and all 0 other categories (except for unkonwn)
+awk '$2 > 0 && $2 + $8 == 1' top_5.categories.tsv | cut -f1 | seqkit grep -f - marker_databases/12S_MiFish_U_species.blast_hit.fasta  > marker_databases/12S_MiFish_U_species.eu_mito_12s.fa
+mafft --auto --thread -1 marker_databases/12S_MiFish_U_species.eu_mito_12s.fa  > alignment/12S_MiFish_U_species.eu_mito_12s.aln
+```
+
+## Human mitochondria
+
+### 7/13/2026
+
+I have two datasets I can use: [Mitotree](https://www.biorxiv.org/content/10.64898/2026.05.28.728540v1) and
+[mitoLEAF](https://academic.oup.com/nargab/article/7/2/lqaf079/8160313).
+
+I will just build both of them.
+
+#### Mitotree
+
+~74% of haplotypes are proprietary FTDNA mitogenomes that are withheld from the public. Not sure if we can actually
+get them.
+
+#### mitoLEAF
+
+mitoLEAF data is much easier to work with. I was able to download the tree and accession information from their
+[webpage](https://forensicgenomics.github.io/mitoLeaf/).
+
+
+Add double quotes to the node names in nwk.
+
+```bash
+perl -pe 's/(^|[(),])([^():,;\s]+)(?=[:),;])/$1"$2"/g' fullTree.nwk  > fullTree.clean.nwk
+```
+
+Make sure that the samples in profiles.csv are consistent with the tree.
+
+```bash
+# Get the accessions from the tree.json file.
+jq -r '.. | objects | .profiles? // empty | .[]' tree.json | sort > in_json.accession.txt 
+
+# Get the differences
+comm -3 <(cut -f1 -d ',' accessions/profiles.csv  | tail -n+2 | sort) in_json.accession.txt
+```
+
+Only four are in profiles but not in the tree.json file. Well not a big deal.
+
+```console
+$ comm -3 <(cut -f1 -d ',' accessions/profiles.csv  | tail -n+2 | sort) in_json.accession.txt  | grep -f - accessions/profiles.csv 
+SLV_22_00000109,Illumina MiSeq,El Salvador,EMPOP,BWA,,,,
+SLV_22_00000110,Illumina MiSeq,El Salvador,EMPOP,BWA,,,,
+SLV_22_00000111,Illumina MiSeq,El Salvador,EMPOP,BWA,,,,
+SLV_22_00000191,Illumina MiSeq,El Salvador,EMPOP,BWA,,,,
+```
+
+```console
+$ perl -pe 's/"([^"]*)"/my $x=$1; $x =~ tr!,!_!; "\"$x\""/ge' profiles.csv | tail -n+2 | cut -f 4 -d ',' | sort | uniq -c | awk '{print $2"\t"$1}' | sort -k2,2 -gr | column -t
+NCBI        69714
+1K_GENOMES  1267
+EMPOP       69
+```
+
+Split the profiles based on the source.
+
+```bash
+perl -pe 's/"([^"]*)"/my $x=$1; $x =~ tr!,!_!; "\"$x\""/ge' profiles.csv | tail -n+2  | awk -F ',' '$4 == "NCBI"'  > profiles.ncbi.csv
+perl -pe 's/"([^"]*)"/my $x=$1; $x =~ tr!,!_!; "\"$x\""/ge' profiles.csv | tail -n+2  | awk -F ',' '$4 == "1K_GENOMES"'  > profiles.1kgenomes.csv
+perl -pe 's/"([^"]*)"/my $x=$1; $x =~ tr!,!_!; "\"$x\""/ge' profiles.csv | tail -n+2  | awk -F ',' '$4 == "EMPOP"'  > profiles.empop.csv
+```
+
+Get as many sequences as I can without spending too much time.
+
+```bash
+# NCBI fastas
+cat accessions/profiles.ncbi.accessions.csv |  epost -db nuccore | efetch -format fasta > mito_fastas/ncbi.fasta
+
+# 1K Genomes
+python3 1k_genomes/reconstruct.py 1k_genomes/NC_012920.fasta 1k_genomes/zheng_s5_variants.tsv 1k_genomes/consensus.fa
+cut -f1 -d ',' accessions/profiles.1kgenomes.csv  | seqkit grep -f - 1k_genomes/consensus.fa  > mito_fastas/1kgenomes.fasta
+
+# Gonna skip over the EMPOP data for now
+```
+
+Got ~70.5 K sequences in total from NCBI and 1K Genomes. Missing 461 sequences from the public mitoLEAF tree.
+
+```console
+$ cat mito_fastas/* | seqkit stats
+file  format  type  num_seqs        sum_len  min_len   avg_len  max_len
+-     FASTA   DNA     70,589  1,169,511,430   10,914  16,567.9   16,594
+$ comm -23 <(cut -f1 -d ',' accessions/profiles.ncbi.accessions.csv  | sort) <(seqkit seq -n mito_fastas/ncbi.fasta | cut -f1 -d ' ' | sort) | grep -f - accessions/profiles.ncbi.accessions.csv  > profiles.missing.csv
+$ comm -23 <(cut -f1 -d ',' accessions/profiles.1kgenomes.csv  | sort) <(seqkit seq -n mito_fastas/1kgenomes.fasta | cut -f1 -d ' ' | sort) | grep -f - accessions/profiles.1kgenomes.csv >> profiles.missing.csv
+$ cat accessions/profiles.empop.csv >> profiles.missing.csv 
+$ wc -l profiles.missing.csv
+461 profiles.missing.csv
+```
+
+Removed `KT851986.1` cuz it's imcomplete.
+
+```bash
+seqkit grep -v -p KT851986.1 ncbi.fasta > tmp && mv tmp ncbi.fasta
+```
+
+Now align using mafft then build a tree using iqtree with a chimp mt outgroup.
+
+```bash
+efetch -db nucleotide -id NC_001643 -format fasta > mito_fastas/chimp_mtDNA.fasta
+cat mito_fastas/merged.fasta mito_fastas/chimp_mtDNA.fasta > mito_fastas/merged.with_chimp.fasta
+
+mafft --auto --thread 64 mito_fastas/merged.with_chimp.fasta > alignment/merged.with_chimp.aln
+```
+
+Actually, I need to rotate them first. Then run mafft on phoenix.
+
+```bash
+awk '/^>/ { print; next } { gsub(/[RYSWKMBDHVryswkmbdhv]/, "N"); print }' merged.with_chimp.fasta > merged.with_chimp.masked.fasta
+~/tools/rotate/rotate -s TACGACCTCGATGTTGGATCA -m 4 merged.with_chimp.masked.fasta > merged.with_chimp.masked.rotated.fasta 2> rotate.log
+```
+
+Also going to directly remove them from the existing alignment and inject them back to see how it looks.
+
+```bash
+seqkit seq -w 0 -u merged.with_chimp.aln | awk '/^>/ { print; next } { gsub(/[RYSWKMBDHVryswkmbdhv]/, "N"); print }' | ~/tools/rotate/rotate -x 5138 - > inject/merged.with_chimp.masked.rotated.aln 2> /dev/null
+cd inject
+awk '$1 == "forward" && ($2 < 2900  || $2 > 3100) {print prev; print} {prev = $0}' ../../mito_fastas/rotate.log  | grep sequence | cut -f 2 | seqkit grep -v -f -  merged.with_chimp.masked.rotated.aln > merged.with_chimp.rotated.good.aln
+awk '$1 == "forward" && ($2 < 2900  || $2 > 3100) {print prev; print} {prev = $0}' ../../mito_fastas/rotate.log  | grep sequence | cut -f 2 | seqkit grep -f -  merged.with_chimp.masked.rotated.aln > merged.with_chimp.rotated.bad.aln
+
+trimal -in merged.with_chimp.rotated.good.aln -out merged.with_chimp.rotated.good.noallgaps.aln -noallgaps
+seqkit seq -w 0  merged.with_chimp.rotated.bad.aln | tr -d '-' > merged.with_chimp.rotated.bad.gaps_removed.aln
+mafft --addfull merged.with_chimp.rotated.bad.gaps_removed.aln --reorder --thread 32 merged.with_chimp.rotated.good.noallgaps.aln > merged.with_chimp.rotated.reinjected.aln
+```
+
+### 7/20/2026
+
+Well, `--addfull` ran out of memory. Anyway, the full alignment with the outgroup finished. Now build a tree using
+DIPPER.
+
+```console
+$ ls trees/*
+trees/mafft_dipper:
+merged.with_chimp.masked.rotated.gappyout.dipper.m1.nwk  merged.with_chimp.masked.rotated.untrimmed.dipper.m1.nwk
+
+trees/twilight_dipper:
+merged.with_chimp.s10000_m1.aln.nwk  merged.with_chimp.s1000_m1.aln.nwk  merged.with_chimp.s16000_m1.aln.nwk  merged.with_chimp.s5000_m1.aln.nwk
+```
+
+Now make a metadata file for the tree.
+
+```bash
+awk -F',' 'NR==1 {print "profile\tmotif"; next} {n=split($3,p," "); for(i=1;i<=n;i++) print p[i]"\t"$1}' mito_representatives.csv | awk -F'\t' 'BEGIN{OFS="\t"}
+NR==1 {print $1,$2,"level1_motif","level2_motif"; next}
+{
+  l1 = substr($2,1,1)
+  if (match($2,/^[A-Za-z][0-9]+/)) l2 = substr($2,1,RLENGTH); else l2 = l1
+  print $1,$2,l1,l2
+}' > mito.haplogroup.tsv
+```
+
+### 7/21/2026
+
+The trees don't look too bad. They are *mostly* monophyloletic. As expected, the tree built from trimmed alignment
+is better.
+
+<details>
+
+<summary>Tree comparison</summary>
+
+```console
+$ python3 tree_taxon_metrics.py -t trees/mafft_dipper/merged.with_chimp.masked.rotated.gappyout.dipper.m1.rerooted.nwk -m mito.haplogroup.tsv -c level1_motif 
+Tips evaluated : 70588  (dropped, unmatched: 1)
+Taxa at column : 26  ('level1_motif')
+
+== Retention Index ==
+  RI                 : 0.9977   (steps s=150, min m=25, max g=54798)
+
+== Per-taxon F-measure ==
+  Overall (size-wtd) : 0.8729
+  Macro (unweighted) : 0.8997
+  Minimum            : 0.3993  (R)
+  Lowest 10 taxa:
+    0.3993  n=1443  frags=84   R
+    0.5393  n=8550  frags=30   L
+    0.6296  n=6792  frags=86   M
+    0.6526  n=1091  frags=46   N
+    0.7393  n=809   frags=13   P
+    0.7778  n=11    frags=2    O
+    0.8321  n=63    frags=5    S
+    0.9442  n=2379  frags=2    F
+    0.9619  n=15790 frags=464  H
+    0.9685  n=5883  frags=23   U
+
+== Entropy / mutual-information congruence (cut-free) ==
+  Delta-H (0..1)     : 0.7665
+  Completeness/NMImax: 0.5734
+  NMI (arithmetic)   : 0.7289
+  Monophyletic blocks: 1171 (vs 26 taxa)
+  H_tax=2.6672  H_clade=4.6512  H_max=11.1646
+```
+
+```console
+$ python3 tree_taxon_metrics.py -t trees/mafft_dipper/merged.with_chimp.masked.rotated.untrimmed.dipper.m1.reroot.nwk -m mito.haplogroup.tsv -c level1_motif
+Tips evaluated : 70588  (dropped, unmatched: 1)
+Taxa at column : 26  ('level1_motif')
+
+== Retention Index ==
+  RI                 : 0.9978   (steps s=144, min m=25, max g=54798)
+
+== Per-taxon F-measure ==
+  Overall (size-wtd) : 0.8201
+  Macro (unweighted) : 0.8736
+  Minimum            : 0.3993  (R)
+  Lowest 10 taxa:
+    0.3993  n=1443  frags=86   R
+    0.5275  n=8550  frags=15   L
+    0.5395  n=1091  frags=36   N
+    0.6634  n=6792  frags=82   M
+    0.6875  n=63    frags=4    S
+    0.7059  n=11    frags=2    O
+    0.8177  n=15790 frags=420  H
+    0.8278  n=809   frags=12   P
+    0.8365  n=5883  frags=24   U
+    0.9108  n=5982  frags=193  B
+
+== Entropy / mutual-information congruence (cut-free) ==
+  Delta-H (0..1)     : 0.7554
+  Completeness/NMImax: 0.5620
+  NMI (arithmetic)   : 0.7196
+  Monophyletic blocks: 1175 (vs 26 taxa)
+  H_tax=2.6672  H_clade=4.7456  H_max=11.1646
+```
+</details>
+<br>
+
+Rotate the alignment back to the original position.
+
+```bash
+~/tools/rotate/rotate -x 14243 alignments/merged.with_chimp.masked.rotated.aln 2> /dev/null  | seqkit seq -w 0 -u > alignments/merged.with_chimp.masked.rotated_back.aln
+```
+
+And build a panman.
+
+```bash
+panmanUtils -M alignments/merged.with_chimp.masked.rotated_back.aln -N trees/mafft_dipper/merged.with_chimp.masked.rotated.gappyout.dipper.m1.rerooted.nwk --threads 16 -o mito
+```
+
+Simulate ancient eDNA reads using `gargammel`. Using damage rates from [Briggs et al. 2007](https://pubmed.ncbi.nlm.nih.gov/17715061/)
+
+Example: 
+
+```bash
+# Using a single genome for now.
+wdir=/scratch1/alan/lab_notebook/human_mito/mitoleaf/sim_reads; mkdir -p $wdir; cd $wdir
+seqkit head -n 1 ../mito_fastas/merged.with_chimp.masked.fasta > OQ981915.1.fa
+
+mkdir ref && mkdir ref/endo ref/cont ref/bact
+mv OQ981915.1.fa ref/endo/
+
+# Using gargammel to simulate reads.
+~/tools/gargammel/gargammel.pl -n 300 --loc 3.7344 --scale 0.35 -damage 0.024,0.36,0.0097,0.68 --o test ref/
+
+# Using leeHom to merge reads.
+~/tools/leeHom/src/leeHom --ancientdna -fq1 test_s1.fq.gz -fq2 test_s2.fq.gz -fqo test_merged
+
+# align the reads to the reference and generate the damage signal for sanity check.
+~/tools/misc/align_ancient ref/endo/OQ981915.1.fa test_merged.fq.gz test
+mapDamage -i test.mapped.sorted.bam -r ref/endo/OQ981915.1.fa
+l results_test.mapped.sorted/Fragmisincorporation_plot.pdf
+```
+
+### 7/22/2026
+
+Going to write a script that takes random haplotypes from the tree, simulate reads, then run panmap deconvolution onto it.
+
+simulate 20, 40, 60, 80, 100, 200, 300, 400, 500, 1000 fragments.
+
+```bash
+wdir=/scratch1/alan/lab_notebook/human_mito/mitoleaf/sim_runs; mkdir -p $wdir; cd $wdir
+
+for i in $(seq 1 20); do
+  bash /scratch1/alan/lab_notebook/human_mito/scripts/simulate_and_run.sh replicate_${i} &
+done
+wait
+
+# Get the distance between the true haplotype and the representative node at the covered positions.
+for file in $(find /scratch1/alan/lab_notebook/human_mito/mitoleaf/sim_runs/ -name '*abundance.out' ! -name '*nodmg*'); do
+  prefix=$(basename $file | cut -f1-2 -d '_')
+  sample=$(basename $file | cut -f1 -d '_')
+  dirname=$(dirname $file)
+  python3 get_covered_distance.py $file ${dirname}/og_fragments/${prefix}.og_fragment.fa.gz $sample --fasta_dir /scratch1/alan/lab_notebook/human_mito/mitoleaf/mito_fastas/panman_fasta_split/ > ${file%.out}.with_distance.out 2> /dev/null
+  echo "processed $file"
+done
+```
+
+I'll be interesting to see how ancient DNA damage could affect the panmap results.
+
+
+
+![violin](human_mito/figures/proportion_violins.png)
+
+![violin_wpd](human_mito/figures/weighted_peak_distance_violins.png)
+
+![top_hap_recovery](human_mito/figures/top_haplotype_fraction.png)
+
 
 
