@@ -7054,13 +7054,13 @@ done
 
 I'll be interesting to see how ancient DNA damage could affect the panmap results.
 
-![violin](human_mito/figures/s0.68_proportion_violins.png)
+![violin](human_mito/figures/s0.25_proportion_violins.png)
 
-![violin_by_tolerance_covered](human_mito/figures/s0.68_proportion_by_peak_tolerance_panels.png)
+![violin_by_tolerance_covered](human_mito/figures/s0.25_proportion_by_peak_tolerance_panels.png)
 
-![violin_by_tolerance_whole_genome](human_mito/figures/s0.68_proportion_by_genome_tolerance_panels.png)
+![violin_by_tolerance_whole_genome](human_mito/figures/s0.25_proportion_by_genome_tolerance_panels.png)
 
-![top_hap_recovery](human_mito/figures/s0.68_top_haplotype_fraction.png)
+![top_hap_recovery](human_mito/figures/s0.25_top_haplotype_fraction.png)
 
 
 ### 7/23/2026
