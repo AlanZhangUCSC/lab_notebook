@@ -7040,25 +7040,27 @@ for start in $(seq 1 20 100); do
 done
 
 # Get the distance between the true haplotype and the representative node at the covered positions.
-for file in $(find /scratch1/alan/lab_notebook/human_mito/mitoleaf/sim_runs/ -name '*abundance.out'); do
-  prefix=$(basename $file | cut -f1-2 -d '_')
-  sample=$(basename $file | cut -f1 -d '_')
-  dirname=$(dirname $file)
-  python3 get_covered_distance.py $file ${dirname}/og_fragments/${prefix}.og_fragment.fa.gz $sample --fasta_dir /scratch1/alan/lab_notebook/human_mito/mitoleaf/mito_fastas/panman_fasta_split/ > ${file%.out}.with_distance.out 2> /dev/null
-  echo "processed $file"
+for i in $(seq 1 100); do
+  for file in $(find /scratch1/alan/lab_notebook/human_mito/mitoleaf/sim_runs/replicate_${i} -name '*abundance.out'); do
+    prefix=$(basename $file | cut -f1-2 -d '_') &&
+    sample=$(basename $file | cut -f1 -d '_') &&
+    dirname=$(dirname $file) &&
+    python3 get_covered_distance.py $file ${dirname}/og_fragments/${prefix}.og_fragment.fa.gz $sample --fasta_dir /scratch1/alan/lab_notebook/human_mito/mitoleaf/mito_fastas/panman_fasta_split/ -o ${file%.out}.with_distance.out 2> /dev/null &
+  done
+  wait
 done
 ```
 
 
 I'll be interesting to see how ancient DNA damage could affect the panmap results.
 
-![violin](human_mito/figures/proportion_violins.png)
+![violin](human_mito/figures/s0.68_proportion_violins.png)
 
-![violin_wpd](human_mito/figures/weighted_peak_distance_violins.png)
+![violin_by_tolerance_covered](human_mito/figures/s0.68_proportion_by_peak_tolerance_panels.png)
 
-![violin_by_tolerance](human_mito/figures/proportion_by_tolerance_panels.png)
+![violin_by_tolerance_whole_genome](human_mito/figures/s0.68_proportion_by_genome_tolerance_panels.png)
 
-![top_hap_recovery](human_mito/figures/top_haplotype_fraction.png)
+![top_hap_recovery](human_mito/figures/s0.68_top_haplotype_fraction.png)
 
 
 ### 7/23/2026
@@ -7084,15 +7086,14 @@ for file in $(find /scratch1/alan/lab_notebook/human_mito/mitoleaf/sim_mixed_run
     ${dir}/og_fragments \
     ${dir}/manifest.tsv \
     --total_fragments ${total_fragments} \
-    --fasta_dir /scratch1/alan/lab_notebook/human_mito/mitoleaf/mito_fastas/panman_fasta_split/ > ${file%.out}.with_distance.out 2> /dev/null
-  echo "processed $file"
+    --fasta_dir /scratch1/alan/lab_notebook/human_mito/mitoleaf/mito_fastas/panman_fasta_split/ -o ${file%.out}.with_distance.out 2> /dev/null
 done
 ```
 
 The samples I simulated might be too damaged. Try less damaged ones. Start with single haplotype samples.
 
 ```bash
-wdir=/scratch1/alan/lab_notebook/human_mito/mitoleaf/sim_runs_avglen50_s0.25; mkdir -p $wdir; cd $wdir
+wdir=/scratch1/alan/lab_notebook/human_mito/mitoleaf/sim_runs_s0.25; mkdir -p $wdir; cd $wdir
 
 for start in $(seq 1 20 100); do
   for i in $(seq $start $((start + 19))); do
@@ -7102,11 +7103,13 @@ for start in $(seq 1 20 100); do
 done
 
 # Get the distance between the true haplotype and the representative node at the covered positions.
-for file in $(find /scratch1/alan/lab_notebook/human_mito/mitoleaf/sim_runs/ -name '*abundance.out'); do
-  prefix=$(basename $file | cut -f1-2 -d '_')
-  sample=$(basename $file | cut -f1 -d '_')
-  dirname=$(dirname $file)
-  python3 get_covered_distance.py $file ${dirname}/og_fragments/${prefix}.og_fragment.fa.gz $sample --fasta_dir /scratch1/alan/lab_notebook/human_mito/mitoleaf/mito_fastas/panman_fasta_split/ > ${file%.out}.with_distance.out 2> /dev/null
-  echo "processed $file"
+for i in $(seq 1 100); do
+  for file in $(find /scratch1/alan/lab_notebook/human_mito/mitoleaf/sim_runs_s0.25/replicate_${i} -name '*abundance.out'); do
+    prefix=$(basename $file | cut -f1-2 -d '_') &&
+    sample=$(basename $file | cut -f1 -d '_') &&
+    dirname=$(dirname $file) &&
+    python3 get_covered_distance.py $file ${dirname}/og_fragments/${prefix}.og_fragment.fa.gz $sample --fasta_dir /scratch1/alan/lab_notebook/human_mito/mitoleaf/mito_fastas/panman_fasta_split/ -o ${file%.out}.with_distance.out 2> /dev/null &
+  done
+  wait
 done
 ```

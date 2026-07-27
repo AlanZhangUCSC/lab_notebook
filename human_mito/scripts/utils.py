@@ -361,3 +361,100 @@ def _tally(contigs, res: DivergenceResult) -> None:
     res.ambiguous_positions += int(counts[_AMBIG])
     res.substitutions += int(counts[_MISMATCHED])
     res.covered_positions += int(counts[_MISMATCHED] + counts[_MATCHED])
+
+
+def align_and_measure_divergence_whole_genome(reference_path: str, query_path: str) -> DivergenceResult:
+  if not os.path.exists(reference_path):
+    raise FileNotFoundError(reference_path)
+  if not os.path.exists(query_path):
+    raise FileNotFoundError(query_path)
+  if not os.path.exists(reference_path + ".fai"):
+    ref_dir = os.path.dirname(os.path.abspath(reference_path)) or "."
+    if not os.access(ref_dir, os.W_OK):
+      raise PermissionError(
+        f"{ref_dir} is not writable; cannot build the .fai index for {reference_path}"
+      )
+    pysam.faidx(reference_path)
+
+  res = DivergenceResult()
+  errs = {}
+  drains = []
+
+  mm2 = subprocess.Popen(
+    ["minimap2", "-a", "--MD", "-x", "asm5", reference_path, query_path],
+    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+  )
+  errs["minimap2"] = []
+  t = threading.Thread(target=_drain, args=(mm2.stderr, errs["minimap2"]), daemon=True)
+  t.start()
+  drains.append(t)
+
+  # -F 0x104 drops unmapped (0x4) and secondary (0x100) in C; supplementary (0x800) is kept
+  view = subprocess.Popen(
+    ["samtools", "view", "-u", "-F", "0x104"],
+    stdin=mm2.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+  )
+  mm2.stdout.close()
+  errs["samtools view"] = []
+  t = threading.Thread(target=_drain, args=(view.stderr, errs["samtools view"]), daemon=True)
+  t.start()
+  drains.append(t)
+
+  try:
+    with pysam.FastaFile(reference_path) as fasta, \
+         pysam.AlignmentFile(view.stdout, "rb") as bam:
+      _accumulate_whole_genome(bam, fasta, res)
+  finally:
+    for proc in (view, mm2):
+      if proc.poll() is None:
+        proc.terminate()
+      proc.wait()
+    for t in drains:
+      t.join()
+
+  for name, proc in (("minimap2", mm2), ("samtools view", view)):
+    if proc.returncode != 0:
+      raise RuntimeError(
+        f"{name} failed (exit {proc.returncode}): "
+        f"{b''.join(errs[name]).decode(errors='replace')[-2000:]}"
+      )
+  return res
+
+
+def _accumulate_whole_genome(bam, fasta, res: DivergenceResult) -> None:
+  contigs: dict[int, tuple[np.ndarray, np.ndarray]] = {}
+
+  for read in bam:
+    seq = read.query_sequence
+    cig = read.cigartuples
+    if not seq or not cig:
+      continue
+    res.reads_used += 1
+
+    tid = read.reference_id
+    entry = contigs.get(tid)
+    if entry is None:
+      raw = fasta.fetch(bam.get_reference_name(tid)).encode("ascii").translate(_ENC)
+      entry = (np.frombuffer(raw, dtype=np.uint8), np.zeros(len(raw), dtype=np.uint8))
+      contigs[tid] = entry
+
+    query = np.frombuffer(seq.encode("ascii").translate(_ENC), dtype=np.uint8)
+    qpos = 0
+    rpos = read.reference_start
+
+    for op, length in cig:
+      if op in _CONSUMES_BOTH:
+        _merge_block(entry, query, qpos, rpos, length, read, res)
+        qpos += length
+        rpos += length
+      elif op in _CONSUMES_QUERY:
+        if op == 1:
+          res.inserted_bases += length
+        qpos += length
+      elif op in _CONSUMES_REF:
+        if op == 2:
+          res.deleted_bases += length
+        rpos += length
+
+  _tally(contigs, res)
+  
